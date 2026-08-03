@@ -51,8 +51,8 @@
                 {% set total_rev = revenue_breakdown|map(attribute='amount')|sum %}
                 {% for item in revenue_breakdown %}
                 {% set pct = (item.amount / total_rev * 100) if total_rev > 0 else 0 %}
-                <a href="/analytics/sales-by-type/{{ item.source }}" class="group block p-4 rounded-lg hover:bg-slate-700/30 transition-colors">
-                    <div class="flex justify-between mb-2 cursor-pointer">
+                <a href="/analytics/sales-by-type/{{ item.source|lower }}" class="group block p-4 rounded-lg hover:bg-slate-700/30 transition-colors cursor-pointer">
+                    <div class="flex justify-between mb-2">
                         <span class="text-slate-300 font-medium capitalize group-hover:text-slate-100">{{ item.source }}</span>
                         <span class="text-gold-400 font-semibold group-hover:text-gold-300">{{ "{:,.0f}".format(item.amount) }} ({{ "{:.1f}".format(pct) }}%)</span>
                     </div>
@@ -70,15 +70,15 @@
                 {% set total_exp = expense_breakdown|map(attribute='amount')|sum %}
                 {% for item in expense_breakdown %}
                 {% set pct = (item.amount / total_exp * 100) if total_exp > 0 else 0 %}
-                <div class="p-4 rounded-lg">
+                <a href="/analytics/expenses-by-category/{{ item.category|lower|replace(' ', '-') }}" class="group block p-4 rounded-lg hover:bg-slate-700/30 transition-colors cursor-pointer">
                     <div class="flex justify-between mb-2">
-                        <span class="text-slate-300 font-medium capitalize">{{ item.category }}</span>
-                        <span class="text-red-400 font-semibold">{{ "{:,.0f}".format(item.amount) }} ({{ "{:.1f}".format(pct) }}%)</span>
+                        <span class="text-slate-300 font-medium capitalize group-hover:text-slate-100">{{ item.category }}</span>
+                        <span class="text-red-400 font-semibold group-hover:text-red-300">{{ "{:,.0f}".format(item.amount) }} ({{ "{:.1f}".format(pct) }}%)</span>
                     </div>
                     <div class="w-full bg-slate-700/50 rounded-full h-3">
-                        <div class="bg-gradient-to-r from-red-400 to-red-500 h-3 rounded-full" style="width: {{ pct }}%"></div>
+                        <div class="bg-gradient-to-r from-red-400 to-red-500 h-3 rounded-full group-hover:shadow-lg transition-all" style="width: {{ pct }}%"></div>
                     </div>
-                </div>
+                </a>
                 {% endfor %}
             </div>
         </div>

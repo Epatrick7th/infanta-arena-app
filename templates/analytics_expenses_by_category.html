@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}{{ category }} Expenses - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-4xl font-bold text-white">{{ category }} Expenses</h2>
+            <p class="text-slate-400 mt-1">{{ arena_name }} - {{ today }}</p>
+        </div>
+        <a href="/analytics/daily" class="px-4 py-2 btn-primary text-white rounded-lg">← Back to Analytics</a>
+    </div>
+
+    <!-- TOTAL SUMMARY CARD -->
+    <div class="bg-gradient-to-br from-red-900 to-red-950 border border-red-700/50 rounded-xl p-8 shadow-xl">
+        <p class="text-red-200 text-sm font-semibold uppercase mb-2">Total {{ category }} Expenses</p>
+        <h3 class="text-5xl font-bold text-red-300">{{ "{:,.0f}".format(total_expenses) }}</h3>
+        <p class="text-red-400 text-sm mt-2">{{ expenses|length }} transaction(s)</p>
+    </div>
+
+    <!-- EXPENSES TABLE -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+        {% if expenses %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-6 py-4 text-left text-slate-400 font-semibold text-sm">Time</th>
+                        <th class="px-6 py-4 text-left text-slate-400 font-semibold text-sm">Description</th>
+                        <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td class="px-6 py-4 text-slate-300 font-medium">{{ expense.created_at[:5] if expense.created_at else 'N/A' }}</td>
+                        <td class="px-6 py-4 text-slate-300">{{ expense.description or 'N/A' }}</td>
+                        <td class="px-6 py-4 text-right text-red-400 font-semibold">{{ "{:,.0f}".format(expense.amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-slate-400 text-center py-8">No {{ category }} expenses recorded today.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

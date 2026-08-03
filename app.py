@@ -791,6 +791,45 @@ def analytics_sales_by_type(sales_type):
         total_revenue=total_revenue,
         today=today)
 
+@app.route('/analytics/expenses-by-category/<category>')
+@require_role('boss')
+def analytics_expenses_by_category(category):
+    """View expenses filtered by category."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Normalize category (convert hyphens to spaces and title case)
+    category_display = category.replace('-', ' ').title()
+    
+    # Get expenses for this category today
+    conn = boss_db.get_connection()
+    expenses = conn.execute("""
+        SELECT id, transaction_date, amount, category, description, created_at
+        FROM expenses
+        WHERE user_id = ? AND DATE(transaction_date) = ? AND LOWER(category) = ?
+        ORDER BY created_at DESC
+    """, (boss_id, today, category_display.lower())).fetchall()
+    conn.close()
+    
+    total_expenses = sum(e['amount'] for e in expenses) if expenses else 0
+    
+    return render_template('analytics_expenses_by_category.html',
+        arena_name=arena_name,
+        category=category_display,
+        expenses=expenses,
+        total_expenses=total_expenses,
+        today=today)
+
 # ===== ANALYTICS ROUTES =====
 
 @app.route('/analytics')
