@@ -3,6 +3,9 @@ import secrets
 from datetime import date
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
 import db
+import boss_db
+import boss_approval
+import analytics
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
@@ -113,11 +116,53 @@ def home():
 @app.route('/dashboard')
 @require_login
 def dashboard():
+    user_role = session.get('user_role')
+    user_id = session.get('user_id')
     today = date.today().isoformat()
-    # Summary stats
-    recent_events = db.list_events(date_from=str(date(2026, 1, 1)), limit=5)
-    total_expenses_row = db.list_expenses()
-    total_expenses = sum(e['amount'] for e in total_expenses_row)
+    
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    arena_name = user['arena_name'] or 'My Arena'
+    boss_id = user['id']
+    
+    # BOSS: Executive dashboard - View/Approve only
+    if user_role == 'boss':
+        dashboard_data = boss_db.get_boss_dashboard_summary(boss_id, today)
+        financial = boss_db.get_financial_summary(boss_id, 'day', today)
+        
+        return render_template('boss_dashboard.html',
+            today=today,
+            arena_name=arena_name,
+            **dashboard_data,
+            **financial)
+    
+    # ASSISTANT: Data entry dashboard - Input all numbers
+    if user_role == 'assistant':
+        # Get recent events for this arena (for the assistant to edit)
+        events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=10)
+        recent_events = events_result['rows'] if isinstance(events_result, dict) else events_result
+        
+        # Get summary for display
+        dashboard_data = boss_db.get_boss_dashboard_summary(boss_id, today)
+        
+        return render_template('assistant_dashboard.html',
+            today=today,
+            arena_name=arena_name,
+            recent_events=recent_events,
+            **dashboard_data)
+    
+    # STAFF: Show operational dashboard (fallback)
+    events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=5)
+    recent_events = events_result['rows'] if isinstance(events_result, dict) else events_result
+    total_expenses_result = db.list_expenses()
+    total_expenses_list = total_expenses_result['rows'] if isinstance(total_expenses_result, dict) else total_expenses_result
+    total_expenses = sum(e['amount'] for e in total_expenses_list) if total_expenses_list else 0
     
     return render_template('dashboard.html', 
         recent_events=recent_events,
@@ -452,6 +497,42 @@ def new_user():
     
     return render_template('new_user.html', roles=db.ROLES, role_labels=ROLE_LABELS)
 
+# ===== ANALYTICS ROUTES =====
+
+@app.route('/analytics')
+@require_role('boss')
+def analytics_dashboard():
+    """Boss views financial analytics."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Get analytics data
+    daily_pl = analytics.get_daily_pl(boss_id, today)
+    weekly_pl = analytics.get_weekly_pl(boss_id, today)
+    monthly_pl = analytics.get_monthly_pl(boss_id, today)
+    daily_trend = analytics.get_daily_trend(boss_id, 7, today)
+    revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
+    expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
+    
+    return render_template('analytics.html',
+        arena_name=arena_name,
+        daily_pl=daily_pl,
+        weekly_pl=weekly_pl,
+        monthly_pl=monthly_pl,
+        daily_trend=daily_trend,
+        revenue_breakdown=revenue_breakdown,
+        expense_breakdown=expense_breakdown)
+
 @app.route('/api/users/<username>', methods=['DELETE'])
 @require_role('super_admin', 'admin')
 def api_delete_user(username):
@@ -461,6 +542,110 @@ def api_delete_user(username):
         return jsonify({"error": "Not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+# ===== BOSS APPROVAL ROUTES =====
+
+@app.route('/boss/approvals')
+@require_role('boss')
+def boss_approvals():
+    """Boss views pending approvals."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    
+    pending = boss_approval.get_pending_approvals(boss_id)
+    
+    return render_template('boss_approvals.html',
+        arena_name=arena_name,
+        **pending)
+
+@app.route('/approve/event/<int:event_id>', methods=['POST'])
+@require_role('boss')
+def approve_event(event_id):
+    """Boss approves an event."""
+    user_id = session.get('user_id')
+    username = session.get('username')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        boss_approval.approve_event(event_id, user['id'], username)
+        flash("Event approved!", "success")
+    
+    return redirect(url_for('boss_approvals'))
+
+@app.route('/approve/revenue/<int:revenue_id>', methods=['POST'])
+@require_role('boss')
+def approve_revenue(revenue_id):
+    """Boss approves revenue."""
+    user_id = session.get('user_id')
+    username = session.get('username')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        boss_approval.approve_revenue(revenue_id, user['id'], username)
+        flash("Revenue approved!", "success")
+    
+    return redirect(url_for('boss_approvals'))
+
+@app.route('/approve/expense/<int:expense_id>', methods=['POST'])
+@require_role('boss')
+def approve_expense(expense_id):
+    """Boss approves expense."""
+    user_id = session.get('user_id')
+    username = session.get('username')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        boss_approval.approve_expense(expense_id, user['id'], username)
+        flash("Expense approved!", "success")
+    
+    return redirect(url_for('boss_approvals'))
+
+@app.route('/approve/remittance/<int:remittance_id>', methods=['POST'])
+@require_role('boss')
+def approve_remittance(remittance_id):
+    """Boss approves remittance."""
+    user_id = session.get('user_id')
+    username = session.get('username')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        boss_approval.approve_remittance(remittance_id, user['id'], username)
+        flash("Remittance approved!", "success")
+    
+    return redirect(url_for('boss_approvals'))
+
+@app.route('/reject/event/<int:event_id>', methods=['POST'])
+@require_role('boss')
+def reject_event(event_id):
+    """Boss rejects an event."""
+    user_id = session.get('user_id')
+    username = session.get('username')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        boss_approval.reject_event(event_id, user['id'], username)
+        flash("Event rejected!", "info")
+    
+    return redirect(url_for('boss_approvals'))
 
 if __name__ == '__main__':
     db.init_db()

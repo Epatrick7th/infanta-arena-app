@@ -1,54 +1,59 @@
 {% extends 'base.html' %}
-{% block title %}Shift Roster - Sabong Arena Hub{% endblock %}
+{% block title %}Shift Roster - Infanta Arena{% endblock %}
 {% block content %}
-<h1>📋 Shift Roster: {{ roster_date }}</h1>
 
-<div style="margin-bottom: 1.5rem;">
-  <label>Change Date:</label>
-  <input type="date" id="roster-date" value="{{ roster_date }}" style="width: auto; display: inline; padding: 0.4rem;">
-  <button onclick="changeDate()" class="btn btn-sm">Go</button>
-</div>
+<div class="space-y-6">
+    <div>
+        <h2 class="text-3xl font-bold text-white mb-2">Shift Roster</h2>
+        <p class="text-slate-400">Manage worker shifts and schedules</p>
+    </div>
 
-<div class="card">
-  <h2>Assignments</h2>
-  <table>
-    <thead>
-      <tr><th>Shift</th><th>Personnel</th><th>Status</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% if roster %}
-        {% for row in roster %}
-        <tr>
-          <td>{{ row.shift_name }}</td>
-          <td>{{ row.personnel_name }}</td>
-          <td>{{ row.status }}</td>
-          <td>
-            <select onchange="updateStatus({{ row.id }}, this.value)" style="width: auto;">
-              <option value="Present" {% if row.status == 'Present' %}selected{% endif %}>Present</option>
-              <option value="Late" {% if row.status == 'Late' %}selected{% endif %}>Late</option>
-              <option value="Absent" {% if row.status == 'Absent' %}selected{% endif %}>Absent</option>
-            </select>
-          </td>
-        </tr>
-        {% endfor %}
-      {% else %}
-      <tr><td colspan="4" style="text-align: center; padding: 1rem;">No assignments yet.</td></tr>
-      {% endif %}
-    </tbody>
-  </table>
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-6">
+        <div class="flex items-center gap-4 mb-6">
+            <label class="text-slate-300 font-medium">Select Date:</label>
+            <input type="date" id="roster-date" class="px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500">
+            <button onclick="changeDate()" class="px-4 py-2 btn-primary text-white rounded-lg font-medium">Load</button>
+        </div>
+    </div>
+
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Today's Roster</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Worker</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Shift Type</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Hours</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td colspan="4" class="px-8 py-8 text-center text-slate-400">No shifts assigned for this date.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>
 function changeDate() {
-  const d = document.getElementById('roster-date').value;
-  window.location.href = '{{ url_for("shift_roster_page") }}?date=' + d;
+    const date = document.getElementById('roster-date').value;
+    if (date) {
+        // Load roster for selected date
+        console.log('Loading roster for:', date);
+    }
 }
-async function updateStatus(rosterId, status) {
-  await fetch(`/api/shift-roster/${rosterId}`, {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({status})
-  });
-}
+
+// Set today's date by default
+window.onload = function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('roster-date').value = today;
+};
 </script>
+
 {% endblock %}

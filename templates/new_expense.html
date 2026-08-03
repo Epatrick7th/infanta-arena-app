@@ -1,32 +1,48 @@
 {% extends 'base.html' %}
-{% block title %}New Expense - Sabong Arena Hub{% endblock %}
+{% block title %}New Expense - Infanta Arena{% endblock %}
 {% block content %}
-<h1>💰 New Expense</h1>
 
-<div class="card" style="max-width: 600px;">
-  <form method="post">
-    <div class="form-group">
-      <label>Date</label>
-      <input type="date" name="date" required>
+<div class="max-w-2xl mx-auto">
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-white mb-2">Record Expense</h2>
+        <p class="text-slate-400">Log a new operating cost</p>
     </div>
-    <div class="form-group">
-      <label>Amount (₱)</label>
-      <input type="number" name="amount" step="0.01" required>
+
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+        <form method="POST" class="space-y-6">
+            <div>
+                <label class="block text-slate-300 text-sm font-medium mb-2">Date</label>
+                <input type="date" name="date" required class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500 focus:ring-2 focus:ring-arena-500/20 transition">
+            </div>
+
+            <div>
+                <label class="block text-slate-300 text-sm font-medium mb-2">Category</label>
+                <select name="category" required class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500 focus:ring-2 focus:ring-arena-500/20 transition">
+                    <option value="">-- Select Category --</option>
+                    <option value="utilities">Utilities</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="supplies">Supplies</option>
+                    <option value="staffing">Staffing</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-slate-300 text-sm font-medium mb-2">Description</label>
+                <input type="text" name="description" class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-arena-500 focus:ring-2 focus:ring-arena-500/20 transition" placeholder="What is this expense for?">
+            </div>
+
+            <div>
+                <label class="block text-slate-300 text-sm font-medium mb-2">Amount (₱)</label>
+                <input type="number" name="amount" step="0.01" min="0" required class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-arena-500 focus:ring-2 focus:ring-arena-500/20 transition" placeholder="0.00">
+            </div>
+
+            <div class="flex gap-3 pt-4">
+                <button type="submit" class="flex-1 py-3 btn-primary text-white rounded-lg font-semibold shadow-lg transition">Record Expense</button>
+                <a href="/expenses" class="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold text-center transition">Cancel</a>
+            </div>
+        </form>
     </div>
-    <div class="form-group">
-      <label>Description</label>
-      <input type="text" name="description">
-    </div>
-    <div class="form-group">
-      <label>Category</label>
-      <input type="text" name="category" placeholder="e.g., Feed, Supplies, Prize">
-    </div>
-    <div class="form-group">
-      <label>Notes</label>
-      <textarea name="note" rows="3"></textarea>
-    </div>
-    <button type="submit" class="btn">Save Expense</button>
-    <a href="{{ url_for('expenses_page') }}" class="btn" style="background: #95a5a6;">Cancel</a>
-  </form>
 </div>
+
 {% endblock %}

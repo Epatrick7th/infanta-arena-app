@@ -1,64 +1,110 @@
 {% extends 'base.html' %}
-{% block title %}{{ event.name }} - Sabong Arena Hub{% endblock %}
+{% block title %}{{ event.name }} - Infanta Arena{% endblock %}
 {% block content %}
-<h1>{{ event.name }} ({{ event.date }})</h1>
 
-<div class="stats">
-  <div class="stat-card">
-    <div class="value">{{ summary.fight_count }}</div>
-    <div class="label">Fights</div>
-  </div>
-  <div class="stat-card">
-    <div class="value">₱{{ "{:,.2f}".format(summary.total_revenue) }}</div>
-    <div class="label">Revenue</div>
-  </div>
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold text-white">{{ event.name }}</h2>
+            <p class="text-slate-400 mt-1">{{ event.event_date }}</p>
+        </div>
+        <a href="/events" class="px-4 py-2 text-slate-300 hover:text-arena-300 font-medium transition">← Back to Events</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Total Fights</p>
+            <h3 class="text-3xl font-bold text-gold-400">{{ summary.fight_count or 0 }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Total Revenue</p>
+            <h3 class="text-3xl font-bold text-arena-300">₱{{ "%.2f"|format(summary.total_revenue or 0) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Plasada Total</p>
+            <h3 class="text-3xl font-bold text-orange-400">₱{{ "%.2f"|format(summary.total_plasada or 0) }}</h3>
+        </div>
+    </div>
+
+    <!-- Fights Table -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white">Fights</h3>
+            <a href="/events/{{ event.id }}/add-fight" class="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-sm font-medium transition">+ Add Fight</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">#</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Meron</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Wala</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Winner</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Plasada</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if fights %}
+                        {% for fight in fights %}
+                        <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                            <td class="px-8 py-4 text-slate-300 font-medium">{{ fight.fight_number }}</td>
+                            <td class="px-8 py-4 text-slate-300">{{ fight.meron_owner }}</td>
+                            <td class="px-8 py-4 text-slate-300">{{ fight.wala_owner }}</td>
+                            <td class="px-8 py-4">
+                                {% if fight.winner %}
+                                    <span class="status-badge status-success">{{ fight.winner }}</span>
+                                {% else %}
+                                    <span class="status-badge status-pending">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-8 py-4 text-gold-400 font-semibold">₱{{ fight.plasada_amount or 0 }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-8 py-8 text-center text-slate-400">No fights yet. Add one to get started.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Revenue Table -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-white">Revenue Sources</h3>
+            <a href="/events/{{ event.id }}/add-revenue" class="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg text-sm font-medium transition">+ Add Revenue</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Source</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Amount</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if revenue %}
+                        {% for rev in revenue %}
+                        <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                            <td class="px-8 py-4 text-slate-300 font-medium">{{ rev.source }}</td>
+                            <td class="px-8 py-4 text-gold-400 font-semibold">₱{{ "%.2f"|format(rev.amount) }}</td>
+                            <td class="px-8 py-4 text-slate-400">{{ rev.description or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="px-8 py-8 text-center text-slate-400">No revenue recorded yet.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </div>
 
-<div class="card">
-  <h2>Fights</h2>
-  <table>
-    <thead>
-      <tr><th>#</th><th>Meron</th><th>Wala</th><th>Winner</th><th>Plasada</th></tr>
-    </thead>
-    <tbody>
-      {% if fights %}
-        {% for fight in fights %}
-        <tr>
-          <td>{{ fight.fight_number }}</td>
-          <td>{{ fight.meron_owner }}</td>
-          <td>{{ fight.wala_owner }}</td>
-          <td>{{ fight.winner or '-' }}</td>
-          <td>₱{{ fight.plasada_amount or 0 }}</td>
-        </tr>
-        {% endfor %}
-      {% else %}
-      <tr><td colspan="5" style="text-align: center; padding: 1rem;">No fights yet.</td></tr>
-      {% endif %}
-    </tbody>
-  </table>
-</div>
-
-<div class="card">
-  <h2>Revenue</h2>
-  <table>
-    <thead>
-      <tr><th>Source</th><th>Amount</th><th>Description</th></tr>
-    </thead>
-    <tbody>
-      {% if revenue %}
-        {% for rev in revenue %}
-        <tr>
-          <td>{{ rev.source }}</td>
-          <td>₱{{ rev.amount }}</td>
-          <td>{{ rev.description or '-' }}</td>
-        </tr>
-        {% endfor %}
-      {% else %}
-      <tr><td colspan="3" style="text-align: center; padding: 1rem;">No revenue recorded.</td></tr>
-      {% endif %}
-    </tbody>
-  </table>
-</div>
-
-<a href="{{ url_for('events_page') }}" class="btn">← Back</a>
 {% endblock %}

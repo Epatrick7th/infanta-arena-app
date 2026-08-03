@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Pending Approvals - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold text-white">Pending Approvals</h2>
+            <p class="text-slate-400 mt-1">{{ arena_name }}</p>
+        </div>
+        <div class="px-4 py-2 bg-orange-900/30 border border-orange-700/50 rounded-lg">
+            <p class="text-orange-300 font-bold">{{ total_pending }} items awaiting approval</p>
+        </div>
+    </div>
+
+    {% if total_pending == 0 %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-12 text-center">
+        <p class="text-slate-400 text-lg">No pending items. All transactions are approved!</p>
+        <a href="/dashboard" class="inline-block mt-4 px-4 py-2 btn-primary text-white rounded-lg">Back to Dashboard</a>
+    </div>
+    {% else %}
+
+    <!-- PENDING EVENTS -->
+    {% if events %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Pending Events ({{ events|length }})</h3>
+        </div>
+        <div class="space-y-3 p-6">
+            {% for event in events %}
+            <div class="bg-slate-900/50 border border-slate-700/30 rounded-lg p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h4 class="text-lg font-bold text-white">{{ event.name }}</h4>
+                        <p class="text-slate-400 text-sm">{{ event.date }} • Created by: {{ event.created_by }}</p>
+                        <p class="text-slate-500 text-xs mt-1">{{ event.created_at }}</p>
+                    </div>
+                    <span class="px-3 py-1 bg-orange-900/30 border border-orange-700/50 text-orange-300 text-sm rounded">PENDING</span>
+                </div>
+                <div class="flex gap-3">
+                    <form method="POST" action="/approve/event/{{ event.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm">Approve</button>
+                    </form>
+                    <form method="POST" action="/reject/event/{{ event.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PENDING REVENUE -->
+    {% if revenue %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Pending Revenue ({{ revenue|length }})</h3>
+        </div>
+        <div class="space-y-3 p-6">
+            {% for rev in revenue %}
+            <div class="bg-slate-900/50 border border-slate-700/30 rounded-lg p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h4 class="text-lg font-bold text-gold-400">₱{{ "{:,.2f}".format(rev.amount) }}</h4>
+                        <p class="text-slate-300 font-medium">{{ rev.source | title }}</p>
+                        <p class="text-slate-400 text-sm">{{ rev.description or '(No description)' }} • Created by: {{ rev.created_by }}</p>
+                        <p class="text-slate-500 text-xs mt-1">{{ rev.created_at }}</p>
+                    </div>
+                    <span class="px-3 py-1 bg-orange-900/30 border border-orange-700/50 text-orange-300 text-sm rounded">PENDING</span>
+                </div>
+                <div class="flex gap-3">
+                    <form method="POST" action="/approve/revenue/{{ rev.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm">Approve</button>
+                    </form>
+                    <form method="POST" action="/reject/revenue/{{ rev.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PENDING EXPENSES -->
+    {% if expenses %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Pending Expenses ({{ expenses|length }})</h3>
+        </div>
+        <div class="space-y-3 p-6">
+            {% for exp in expenses %}
+            <div class="bg-slate-900/50 border border-slate-700/30 rounded-lg p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h4 class="text-lg font-bold text-red-400">₱{{ "{:,.2f}".format(exp.amount) }}</h4>
+                        <p class="text-slate-300 font-medium">{{ exp.category | title }}</p>
+                        <p class="text-slate-400 text-sm">{{ exp.description or '(No description)' }} • Created by: {{ exp.created_by }}</p>
+                        <p class="text-slate-500 text-xs mt-1">{{ exp.created_at }}</p>
+                    </div>
+                    <span class="px-3 py-1 bg-orange-900/30 border border-orange-700/50 text-orange-300 text-sm rounded">PENDING</span>
+                </div>
+                <div class="flex gap-3">
+                    <form method="POST" action="/approve/expense/{{ exp.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm">Approve</button>
+                    </form>
+                    <form method="POST" action="/reject/expense/{{ exp.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- PENDING REMITTANCES -->
+    {% if remittances %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Pending Remittances ({{ remittances|length }})</h3>
+        </div>
+        <div class="space-y-3 p-6">
+            {% for rem in remittances %}
+            <div class="bg-slate-900/50 border border-slate-700/30 rounded-lg p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h4 class="text-lg font-bold text-purple-400">₱{{ "{:,.2f}".format(rem.amount) }}</h4>
+                        <p class="text-slate-400 text-sm">{{ rem.note or '(No notes)' }} • Created by: {{ rem.created_by }}</p>
+                        <p class="text-slate-500 text-xs mt-1">{{ rem.created_at }}</p>
+                    </div>
+                    <span class="px-3 py-1 bg-orange-900/30 border border-orange-700/50 text-orange-300 text-sm rounded">PENDING</span>
+                </div>
+                <div class="flex gap-3">
+                    <form method="POST" action="/approve/remittance/{{ rem.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-sm">Approve</button>
+                    </form>
+                    <form method="POST" action="/reject/remittance/{{ rem.id }}" style="display: inline;">
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium text-sm">Reject</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- Back Button -->
+    <div class="text-center">
+        <a href="/dashboard" class="px-6 py-3 btn-primary text-white rounded-lg font-medium">Back to Dashboard</a>
+    </div>
+
+</div>
+
+{% endblock %}

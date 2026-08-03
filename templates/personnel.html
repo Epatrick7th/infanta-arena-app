@@ -1,36 +1,51 @@
 {% extends 'base.html' %}
-{% block title %}Personnel - Sabong Arena Hub{% endblock %}
+
+{% block title %}Personnel - Infanta Arena{% endblock %}
+
 {% block content %}
-<h1>👥 Personnel</h1>
-<a href="{{ url_for('new_personnel') }}" class="btn">+ Add Personnel</a>
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-3xl font-bold text-white">Personnel</h2>
+            <p class="text-slate-400 mt-1">Manage workers and shift assignments</p>
+        </div>
+        <a href="/personnel/new" class="px-6 py-3 btn-primary text-white rounded-lg font-medium shadow-lg">+ Add Worker</a>
+    </div>
 
-<div class="card" style="margin-top: 1.5rem;">
-  <table>
-    <thead>
-      <tr><th>Name</th><th>Position</th><th>Status</th><th>Rate/Shift</th></tr>
-    </thead>
-    <tbody id="personnel-body">
-      <tr><td colspan="4" style="text-align: center; padding: 2rem;">Loading...</td></tr>
-    </tbody>
-  </table>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="card-hover bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 bg-slate-900/50 border-b border-slate-700/50">
+                <h3 class="text-lg font-bold text-white">Juan Dela Cruz</h3>
+                <p class="text-gold-400 text-sm mt-1">Pit Manager</p>
+            </div>
+            <div class="px-6 py-4 space-y-3">
+                <div>
+                    <p class="text-slate-400 text-xs">Daily Rate</p>
+                    <p class="text-xl font-bold text-arena-300">₱1,500</p>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs">Status</p>
+                    <span class="status-badge status-success">Active</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-hover bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
+            <div class="px-6 py-4 bg-slate-900/50 border-b border-slate-700/50">
+                <h3 class="text-lg font-bold text-white">Maria Santos</h3>
+                <p class="text-gold-400 text-sm mt-1">Cashier</p>
+            </div>
+            <div class="px-6 py-4 space-y-3">
+                <div>
+                    <p class="text-slate-400 text-xs">Daily Rate</p>
+                    <p class="text-xl font-bold text-arena-300">₱1,200</p>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-xs">Status</p>
+                    <span class="status-badge status-success">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<script>
-async function loadPersonnel() {
-  const resp = await fetch('{{ url_for("api_personnel") }}?status=Active');
-  const data = await resp.json();
-  const tbody = document.getElementById('personnel-body');
-  tbody.innerHTML = '';
-  if (!data.rows || data.rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No personnel yet.</td></tr>';
-  } else {
-    data.rows.forEach(p => {
-      const row = document.createElement('tr');
-      row.innerHTML = `<td>${p.name}</td><td>${p.position}</td><td>${p.status}</td><td>₱${p.rate_per_shift || 0}</td>`;
-      tbody.appendChild(row);
-    });
-  }
-}
-loadPersonnel();
-</script>
 {% endblock %}

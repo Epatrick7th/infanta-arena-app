@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}Data Entry Dashboard - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-4xl font-bold text-white">{{ arena_name }}</h2>
+            <p class="text-arena-400 text-lg font-semibold mt-1">Assistant - Data Entry</p>
+            <p class="text-slate-400 text-sm mt-1">{{ today }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/events/new" class="px-6 py-3 btn-primary text-white rounded-lg font-medium shadow-lg">+ New Event</a>
+            <a href="/logout" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium">Logout</a>
+        </div>
+    </div>
+
+    <!-- TODAY'S SUMMARY (READ-ONLY) -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Today's Revenue</p>
+            <h3 class="text-3xl font-bold text-arena-300">₱{{ "{:,.0f}".format(today_revenue) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Today's Expenses</p>
+            <h3 class="text-3xl font-bold text-red-400">₱{{ "{:,.0f}".format(total_expenses_today) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Today's Fights</p>
+            <h3 class="text-3xl font-bold text-gold-400">{{ fights_today }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl p-6 shadow-xl">
+            <p class="text-slate-400 text-sm font-medium mb-2">Net Today</p>
+            <h3 class="text-3xl font-bold text-emerald-400">₱{{ "{:,.0f}".format(net_profit_today) }}</h3>
+        </div>
+    </div>
+
+    <!-- DATA ENTRY SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- New Event -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Create Event</h3>
+            <form method="POST" action="/events/new" class="space-y-4">
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Event Name</label>
+                    <input type="text" name="name" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500">
+                </div>
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Date</label>
+                    <input type="date" name="event_date" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500">
+                </div>
+                <button type="submit" class="w-full py-2 btn-primary text-white rounded-lg font-medium">Create Event</button>
+            </form>
+        </div>
+
+        <!-- Record Revenue -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Record Revenue</h3>
+            <form method="POST" action="/events/new" class="space-y-4">
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Source</label>
+                    <select name="source" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500">
+                        <option value="plasada">Plasada (House Commission)</option>
+                        <option value="gate">Gate Fees</option>
+                        <option value="concession">Concessions</option>
+                        <option value="sponsor">Sponsor</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Amount (₱)</label>
+                    <input type="number" name="amount" step="0.01" min="0" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500" placeholder="0.00">
+                </div>
+                <button type="submit" class="w-full py-2 btn-primary text-white rounded-lg font-medium">Record Revenue</button>
+            </form>
+        </div>
+
+        <!-- Record Expense -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Record Expense</h3>
+            <form method="POST" action="/expenses/new" class="space-y-4">
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Category</label>
+                    <select name="category" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500">
+                        <option value="utilities">Utilities</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="supplies">Supplies</option>
+                        <option value="staffing">Staffing</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Amount (₱)</label>
+                    <input type="number" name="amount" step="0.01" min="0" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500" placeholder="0.00">
+                </div>
+                <button type="submit" class="w-full py-2 btn-primary text-white rounded-lg font-medium">Record Expense</button>
+            </form>
+        </div>
+
+        <!-- Record Remittance -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Record Remittance</h3>
+            <form method="POST" action="/remittances/new" class="space-y-4">
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Amount (₱)</label>
+                    <input type="number" name="amount" step="0.01" min="0" required class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-slate-300 text-sm font-medium mb-1">Notes</label>
+                    <input type="text" name="notes" class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500" placeholder="Optional notes">
+                </div>
+                <button type="submit" class="w-full py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg font-medium">Record Remittance</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RECENT EVENTS (for reference) -->
+    {% if recent_events %}
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-700/50 bg-slate-900/50">
+            <h3 class="text-xl font-bold text-white">Recent Events</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Date</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Event Name</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Fights</th>
+                        <th class="px-8 py-4 text-left text-slate-400 font-semibold text-sm">Revenue</th>
+                        <th class="px-8 py-4 text-right text-slate-400 font-semibold text-sm">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in recent_events[:5] %}
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td class="px-8 py-4 text-slate-300 text-sm">{{ event.date or event.event_date }}</td>
+                        <td class="px-8 py-4 text-white font-medium">{{ event.name }}</td>
+                        <td class="px-8 py-4 text-slate-400 text-sm">{{ event.total_fights or '-' }}</td>
+                        <td class="px-8 py-4 text-gold-400 font-semibold">₱{{ "{:,.0f}".format(event.total_revenue or 0) }}</td>
+                        <td class="px-8 py-4 text-right">
+                            <a href="/events/{{ event.id }}" class="text-arena-300 hover:text-arena-100 text-sm font-medium">Edit →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

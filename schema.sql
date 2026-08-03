@@ -1,13 +1,17 @@
 -- Sabong Arena (Cockfighting) Event & Fight Tracking
 -- Revenue: plasada (house commission), event fees, concessions
 -- Personnel: handlers, security, staff (same roster/payroll as ice plant)
+-- Multi-tenant: Each boss owns an arena with isolated data
 
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'staff',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    role TEXT NOT NULL DEFAULT 'staff' CHECK(role IN ('super_admin', 'admin', 'boss', 'staff')),
+    boss_id INTEGER,
+    arena_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (boss_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -18,21 +22,26 @@ CREATE TABLE IF NOT EXISTS settings (
 -- Events: hackfights, regular derbies, special tournaments
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
+    arena_id TEXT NOT NULL,
     date TEXT NOT NULL,
     name TEXT NOT NULL,
     event_type TEXT NOT NULL CHECK(event_type IN ('hackfight','derby','tournament','special')),
+    location TEXT,
     note TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_by TEXT,
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_events_boss_id ON events(boss_id);
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 
 -- Individual fights within an event
 CREATE TABLE IF NOT EXISTS fights (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     event_id INTEGER NOT NULL REFERENCES events(id),
     fight_number INTEGER,
     date TEXT NOT NULL,
@@ -47,12 +56,14 @@ CREATE TABLE IF NOT EXISTS fights (
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_fights_boss_id ON fights(boss_id);
 CREATE INDEX IF NOT EXISTS idx_fights_event_id ON fights(event_id);
 CREATE INDEX IF NOT EXISTS idx_fights_date ON fights(date);
 
 -- Revenue: each fight generates plasada (house commission), pit fees, misc revenue per event
 CREATE TABLE IF NOT EXISTS event_revenue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     event_id INTEGER NOT NULL REFERENCES events(id),
     date TEXT NOT NULL,
     source TEXT NOT NULL CHECK(source IN ('plasada','pit_fee','gate','concession','sponsor','other')),
@@ -63,12 +74,14 @@ CREATE TABLE IF NOT EXISTS event_revenue (
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_event_revenue_boss_id ON event_revenue(boss_id);
 CREATE INDEX IF NOT EXISTS idx_event_revenue_event_id ON event_revenue(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_revenue_date ON event_revenue(date);
 
 -- Expenses: feed, supplies, prizes, staff bonuses, etc
 CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     date TEXT NOT NULL,
     amount REAL NOT NULL,
     description TEXT,
@@ -82,6 +95,7 @@ CREATE TABLE IF NOT EXISTS expenses (
     ref_number TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_expenses_boss_id ON expenses(boss_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
 CREATE INDEX IF NOT EXISTS idx_expenses_remittance_id ON expenses(remittance_id);
@@ -89,6 +103,7 @@ CREATE INDEX IF NOT EXISTS idx_expenses_remittance_id ON expenses(remittance_id)
 -- Cash remittances (to owner/HQ)
 CREATE TABLE IF NOT EXISTS cash_remittances (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     date TEXT NOT NULL,
     amount REAL NOT NULL,
     note TEXT,
@@ -100,6 +115,7 @@ CREATE TABLE IF NOT EXISTS cash_remittances (
     ref_number TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_cash_remittances_boss_id ON cash_remittances(boss_id);
 CREATE INDEX IF NOT EXISTS idx_cash_remittances_date ON cash_remittances(date);
 
 -- Explicit transaction links for manual remittances
@@ -144,8 +160,9 @@ CREATE TABLE IF NOT EXISTS reference_counters (
 -- Personnel: handlers, security, administrative staff
 CREATE TABLE IF NOT EXISTS personnel (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     name TEXT NOT NULL,
-    position TEXT NOT NULL CHECK(position IN ('Admin','Handler','Security','Staff')),
+    position TEXT NOT NULL CHECK(position IN ('pit_manager','referee','cashier','security','cleaner','other')),
     contact_number TEXT,
     date_hired TEXT,
     status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active','Inactive')),
@@ -156,6 +173,7 @@ CREATE TABLE IF NOT EXISTS personnel (
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_personnel_boss_id ON personnel(boss_id);
 CREATE INDEX IF NOT EXISTS idx_personnel_status ON personnel(status);
 CREATE INDEX IF NOT EXISTS idx_personnel_position ON personnel(position);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_personnel_user_id_unique
@@ -175,6 +193,7 @@ CREATE TABLE IF NOT EXISTS shift_types (
 -- Daily shift roster
 CREATE TABLE IF NOT EXISTS shift_roster (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     date TEXT NOT NULL,
     shift_type_id INTEGER NOT NULL REFERENCES shift_types(id),
     personnel_id INTEGER NOT NULL REFERENCES personnel(id),
@@ -186,6 +205,7 @@ CREATE TABLE IF NOT EXISTS shift_roster (
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_shift_roster_boss_id ON shift_roster(boss_id);
 CREATE INDEX IF NOT EXISTS idx_shift_roster_date ON shift_roster(date);
 CREATE INDEX IF NOT EXISTS idx_shift_roster_personnel ON shift_roster(personnel_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_shift_roster_unique_active
@@ -194,6 +214,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_shift_roster_unique_active
 -- Penalties & deductions (late, absence, loans, SSS, etc)
 CREATE TABLE IF NOT EXISTS personnel_penalties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
     personnel_id INTEGER NOT NULL REFERENCES personnel(id),
     date TEXT NOT NULL,
     type TEXT NOT NULL,
@@ -208,5 +229,6 @@ CREATE TABLE IF NOT EXISTS personnel_penalties (
     deleted_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_personnel_penalties_boss_id ON personnel_penalties(boss_id);
 CREATE INDEX IF NOT EXISTS idx_personnel_penalties_personnel_date ON personnel_penalties(personnel_id, date);
 CREATE INDEX IF NOT EXISTS idx_personnel_penalties_source_roster ON personnel_penalties(source_roster_id);

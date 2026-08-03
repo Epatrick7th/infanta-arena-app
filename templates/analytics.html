@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block title %}Analytics & Reports - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-4xl font-bold text-white">Financial Analytics</h2>
+            <p class="text-slate-400 mt-1">{{ arena_name }} - Detailed P&L Analysis</p>
+        </div>
+        <a href="/dashboard" class="px-4 py-2 btn-primary text-white rounded-lg">← Back to Dashboard</a>
+    </div>
+
+    <!-- TAB NAVIGATION -->
+    <div class="flex gap-2 border-b border-slate-700">
+        <button class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500 cursor-pointer" onclick="showTab('daily')">Daily</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('weekly')">Weekly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('monthly')">Monthly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('trends')">Trends</button>
+    </div>
+
+    <!-- DAILY TAB -->
+    <div id="daily-tab" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Revenue -->
+            <div class="bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-blue-200 text-sm font-semibold uppercase mb-2">Today's Revenue</p>
+                <h3 class="text-4xl font-bold text-blue-300">₱{{ "{:,.0f}".format(daily_pl.revenue) }}</h3>
+                <p class="text-blue-400 text-xs mt-2">All approved transactions</p>
+            </div>
+
+            <!-- Expenses -->
+            <div class="bg-gradient-to-br from-red-900 to-red-950 border border-red-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-red-200 text-sm font-semibold uppercase mb-2">Today's Expenses</p>
+                <h3 class="text-4xl font-bold text-red-300">₱{{ "{:,.0f}".format(daily_pl.expenses) }}</h3>
+                <p class="text-red-400 text-xs mt-2">Operating costs</p>
+            </div>
+
+            <!-- Net Profit -->
+            <div class="bg-gradient-to-br from-emerald-900 to-emerald-950 border border-emerald-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-emerald-200 text-sm font-semibold uppercase mb-2">Net Profit</p>
+                <h3 class="text-4xl font-bold text-emerald-300">₱{{ "{:,.0f}".format(daily_pl.net_profit) }}</h3>
+                <p class="text-emerald-400 text-xs mt-2">After expenses</p>
+            </div>
+
+            <!-- Profit Margin -->
+            <div class="bg-gradient-to-br from-purple-900 to-purple-950 border border-purple-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-purple-200 text-sm font-semibold uppercase mb-2">Profit Margin</p>
+                <h3 class="text-4xl font-bold text-purple-300">{{ daily_pl.profit_margin }}%</h3>
+                <p class="text-purple-400 text-xs mt-2">Profitability ratio</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- WEEKLY TAB -->
+    <div id="weekly-tab" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-blue-200 text-sm font-semibold uppercase mb-2">Weekly Revenue</p>
+                <h3 class="text-4xl font-bold text-blue-300">₱{{ "{:,.0f}".format(weekly_pl.revenue) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-red-900 to-red-950 border border-red-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-red-200 text-sm font-semibold uppercase mb-2">Weekly Expenses</p>
+                <h3 class="text-4xl font-bold text-red-300">₱{{ "{:,.0f}".format(weekly_pl.expenses) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-900 to-emerald-950 border border-emerald-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-emerald-200 text-sm font-semibold uppercase mb-2">Weekly Net</p>
+                <h3 class="text-4xl font-bold text-emerald-300">₱{{ "{:,.0f}".format(weekly_pl.net_profit) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-purple-900 to-purple-950 border border-purple-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-purple-200 text-sm font-semibold uppercase mb-2">Margin</p>
+                <h3 class="text-4xl font-bold text-purple-300">{{ weekly_pl.profit_margin }}%</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- MONTHLY TAB -->
+    <div id="monthly-tab" class="space-y-6 hidden">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-blue-200 text-sm font-semibold uppercase mb-2">Monthly Revenue</p>
+                <h3 class="text-4xl font-bold text-blue-300">₱{{ "{:,.0f}".format(monthly_pl.revenue) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-red-900 to-red-950 border border-red-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-red-200 text-sm font-semibold uppercase mb-2">Monthly Expenses</p>
+                <h3 class="text-4xl font-bold text-red-300">₱{{ "{:,.0f}".format(monthly_pl.expenses) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-emerald-900 to-emerald-950 border border-emerald-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-emerald-200 text-sm font-semibold uppercase mb-2">Monthly Net</p>
+                <h3 class="text-4xl font-bold text-emerald-300">₱{{ "{:,.0f}".format(monthly_pl.net_profit) }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-purple-900 to-purple-950 border border-purple-700/50 rounded-xl p-8 shadow-xl">
+                <p class="text-purple-200 text-sm font-semibold uppercase mb-2">Margin</p>
+                <h3 class="text-4xl font-bold text-purple-300">{{ monthly_pl.profit_margin }}%</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRENDS TAB -->
+    <div id="trends-tab" class="space-y-6 hidden">
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">7-Day Revenue & Expense Trend</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-900/50">
+                        <tr class="border-b border-slate-700/50">
+                            <th class="px-6 py-4 text-left text-slate-400 font-semibold text-sm">Date</th>
+                            <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Revenue</th>
+                            <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Expenses</th>
+                            <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Net Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day in daily_trend %}
+                        <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                            <td class="px-6 py-4 text-slate-300 font-medium">{{ day.date }}</td>
+                            <td class="px-6 py-4 text-right text-blue-400 font-semibold">₱{{ "{:,.0f}".format(day.revenue) }}</td>
+                            <td class="px-6 py-4 text-right text-red-400 font-semibold">₱{{ "{:,.0f}".format(day.expenses) }}</td>
+                            <td class="px-6 py-4 text-right font-semibold {% if day.net > 0 %}text-emerald-400{% else %}text-red-400{% endif %}">₱{{ "{:,.0f}".format(day.net) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- BREAKDOWN CHARTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Revenue by Source -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Revenue by Source (This Month)</h3>
+            <div class="space-y-4">
+                {% set total_rev = revenue_breakdown|map(attribute='amount')|sum %}
+                {% for item in revenue_breakdown %}
+                {% set pct = (item.amount / total_rev * 100) if total_rev > 0 else 0 %}
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-slate-300 font-medium capitalize">{{ item.source }}</span>
+                        <span class="text-gold-400 font-semibold">₱{{ "{:,.0f}".format(item.amount) }} ({{ "{:.1f}".format(pct) }}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-700/50 rounded-full h-3">
+                        <div class="bg-gradient-to-r from-gold-400 to-gold-500 h-3 rounded-full" style="width: {{ pct }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Expenses by Category -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+            <h3 class="text-2xl font-bold text-white mb-6">Expenses by Category (This Month)</h3>
+            <div class="space-y-4">
+                {% set total_exp = expense_breakdown|map(attribute='amount')|sum %}
+                {% for item in expense_breakdown %}
+                {% set pct = (item.amount / total_exp * 100) if total_exp > 0 else 0 %}
+                <div>
+                    <div class="flex justify-between mb-2">
+                        <span class="text-slate-300 font-medium capitalize">{{ item.category }}</span>
+                        <span class="text-red-400 font-semibold">₱{{ "{:,.0f}".format(item.amount) }} ({{ "{:.1f}".format(pct) }}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-700/50 rounded-full h-3">
+                        <div class="bg-gradient-to-r from-red-400 to-red-500 h-3 rounded-full" style="width: {{ pct }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    document.getElementById('daily-tab').classList.add('hidden');
+    document.getElementById('weekly-tab').classList.add('hidden');
+    document.getElementById('monthly-tab').classList.add('hidden');
+    document.getElementById('trends-tab').classList.add('hidden');
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.remove('hidden');
+    
+    // Update tab buttons
+    document.querySelectorAll('button').forEach(btn => {
+        if (btn.textContent.toLowerCase().includes(tabName) || (tabName === 'trends' && btn.textContent.includes('Trends'))) {
+            btn.classList.remove('text-slate-400', 'border-transparent');
+            btn.classList.add('text-white', 'border-gold-500');
+        } else {
+            btn.classList.add('text-slate-400', 'border-transparent');
+            btn.classList.remove('text-white', 'border-gold-500');
+        }
+    });
+}
+</script>
+
+{% endblock %}
