@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Analytics Test{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <h1 class="text-4xl font-bold text-white">Analytics Test - LINKS AS BUTTONS</h1>
+    
+    <div style="border-bottom: 1px solid #4b5563; margin: 2rem 0;">
+        <a href="#" onclick="return false" style="padding: 12px 24px; display: inline-block; background: none; border: none; color: white; font-weight: bold; border-bottom: 2px solid #f59e0b; cursor: pointer; text-decoration: none;">Daily</a>
+        <a href="#" onclick="return false" style="padding: 12px 24px; display: inline-block; background: none; border: none; color: #9ca3af; font-weight: bold; border-bottom: 2px solid transparent; cursor: pointer; text-decoration: none;">Weekly</a>
+        <a href="#" onclick="return false" style="padding: 12px 24px; display: inline-block; background: none; border: none; color: #9ca3af; font-weight: bold; border-bottom: 2px solid transparent; cursor: pointer; text-decoration: none;">Monthly</a>
+        <a href="#" onclick="return false" style="padding: 12px 24px; display: inline-block; background: none; border: none; color: #9ca3af; font-weight: bold; border-bottom: 2px solid transparent; cursor: pointer; text-decoration: none;">Trends</a>
+    </div>
+    
+    <div style="background: rgba(59, 130, 246, 0.1); padding: 24px; border-radius: 8px;">
+        <h2 style="font-size: 20px; font-weight: bold; color: white; margin-bottom: 16px;">Daily Content</h2>
+        <p style="color: #93c5fd;">Revenue: {{ daily_pl.revenue|int }}</p>
+        <p style="color: #93c5fd;">Expenses: {{ daily_pl.expenses|int }}</p>
+        <p style="color: #93c5fd;">Profit: {{ daily_pl.net_profit|int }}</p>
+    </div>
+    
+    <p style="color: #9ca3af; font-size: 14px;">Links with onclick="return false". If these work without 404, we found the issue.</p>
+</div>
+{% endblock %}
