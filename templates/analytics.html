@@ -13,11 +13,11 @@
     </div>
 
     <!-- TAB NAVIGATION -->
-    <div class="flex gap-2 border-b border-slate-700">
-        <button class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500 cursor-pointer" onclick="showTab('daily')">Daily</button>
-        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('weekly')">Weekly</button>
-        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('monthly')">Monthly</button>
-        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white" onclick="showTab('trends')">Trends</button>
+    <div class="flex gap-2 border-b border-slate-700" id="analytics-tabs">
+        <button class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500 cursor-pointer tab-btn" data-tab="daily">Daily</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="weekly">Weekly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="monthly">Monthly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="trends">Trends</button>
     </div>
 
     <!-- DAILY TAB -->
@@ -172,6 +172,14 @@
 </div>
 
 <script>
+// Set up tab button click handlers
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        showTab(tabName);
+    });
+});
+
 function showTab(tabName) {
     // Hide all tabs
     document.getElementById('daily-tab').classList.add('hidden');
@@ -182,9 +190,10 @@ function showTab(tabName) {
     // Show selected tab
     document.getElementById(tabName + '-tab').classList.remove('hidden');
     
-    // Update tab buttons
-    document.querySelectorAll('button').forEach(btn => {
-        if (btn.textContent.toLowerCase().includes(tabName) || (tabName === 'trends' && btn.textContent.includes('Trends'))) {
+    // Update tab buttons (only within analytics-tabs)
+    document.querySelectorAll('#analytics-tabs .tab-btn').forEach(btn => {
+        const btnTab = btn.getAttribute('data-tab');
+        if (btnTab === tabName) {
             btn.classList.remove('text-slate-400', 'border-transparent');
             btn.classList.add('text-white', 'border-gold-500');
         } else {
