@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Weekly Analytics - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-4xl font-bold text-white">Financial Analytics</h2>
+            <p class="text-slate-400 mt-1">{{ arena_name }} - Weekly Report</p>
+        </div>
+        <a href="/dashboard" class="px-4 py-2 btn-primary text-white rounded-lg">← Back to Dashboard</a>
+    </div>
+
+    <!-- NAVIGATION BUTTONS -->
+    <div class="flex gap-2 border-b border-slate-700 mb-6">
+        <a href="/analytics/daily" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Daily</a>
+        <a href="/analytics/weekly" class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500">Weekly</a>
+        <a href="/analytics/monthly" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Monthly</a>
+        <a href="/analytics/trends" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Trends</a>
+    </div>
+
+    <!-- WEEKLY KPI CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-gradient-to-br from-blue-900 to-blue-950 border border-blue-700/50 rounded-xl p-8 shadow-xl">
+            <p class="text-blue-200 text-sm font-semibold uppercase mb-2">Weekly Revenue</p>
+            <h3 class="text-4xl font-bold text-blue-300">{{ "{:,.0f}".format(weekly_pl.revenue) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-red-900 to-red-950 border border-red-700/50 rounded-xl p-8 shadow-xl">
+            <p class="text-red-200 text-sm font-semibold uppercase mb-2">Weekly Expenses</p>
+            <h3 class="text-4xl font-bold text-red-300">{{ "{:,.0f}".format(weekly_pl.expenses) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-emerald-900 to-emerald-950 border border-emerald-700/50 rounded-xl p-8 shadow-xl">
+            <p class="text-emerald-200 text-sm font-semibold uppercase mb-2">Weekly Profit</p>
+            <h3 class="text-4xl font-bold text-emerald-300">{{ "{:,.0f}".format(weekly_pl.net_profit) }}</h3>
+        </div>
+        <div class="bg-gradient-to-br from-purple-900 to-purple-950 border border-purple-700/50 rounded-xl p-8 shadow-xl">
+            <p class="text-purple-200 text-sm font-semibold uppercase mb-2">Margin</p>
+            <h3 class="text-4xl font-bold text-purple-300">{{ weekly_pl.profit_margin }}%</h3>
+        </div>
+    </div>
+</div>
+{% endblock %}

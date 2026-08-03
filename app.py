@@ -502,7 +502,13 @@ def new_user():
 @app.route('/analytics')
 @require_role('boss')
 def analytics_dashboard():
-    """Boss views financial analytics."""
+    """Boss views financial analytics - daily view."""
+    return redirect(url_for('analytics_daily'))
+
+@app.route('/analytics/daily')
+@require_role('boss')
+def analytics_daily():
+    """Boss views daily P&L."""
     user_id = session.get('user_id')
     conn = db.get_connection()
     user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -516,24 +522,121 @@ def analytics_dashboard():
     arena_name = user['arena_name'] or 'My Arena'
     today = date.today().isoformat()
     
-    # Get analytics data
     daily_pl = analytics.get_daily_pl(boss_id, today)
+    daily_trend = analytics.get_daily_trend(boss_id, 7, today)
+    revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
+    expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
+    
+    response = make_response(render_template('analytics_daily.html',
+        arena_name=arena_name,
+        daily_pl=daily_pl,
+        daily_trend=daily_trend,
+        revenue_breakdown=revenue_breakdown,
+        expense_breakdown=expense_breakdown,
+        current_view='daily'))
+    
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
+@app.route('/analytics/weekly')
+@require_role('boss')
+def analytics_weekly():
+    """Boss views weekly P&L."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
     weekly_pl = analytics.get_weekly_pl(boss_id, today)
+    daily_trend = analytics.get_daily_trend(boss_id, 7, today)
+    revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
+    expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
+    
+    response = make_response(render_template('analytics_weekly.html',
+        arena_name=arena_name,
+        weekly_pl=weekly_pl,
+        daily_trend=daily_trend,
+        revenue_breakdown=revenue_breakdown,
+        expense_breakdown=expense_breakdown,
+        current_view='weekly'))
+    
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
+@app.route('/analytics/monthly')
+@require_role('boss')
+def analytics_monthly():
+    """Boss views monthly P&L."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
     monthly_pl = analytics.get_monthly_pl(boss_id, today)
     daily_trend = analytics.get_daily_trend(boss_id, 7, today)
     revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
     expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
     
-    response = make_response(render_template('analytics_links.html',
+    response = make_response(render_template('analytics_monthly.html',
         arena_name=arena_name,
-        daily_pl=daily_pl,
-        weekly_pl=weekly_pl,
         monthly_pl=monthly_pl,
         daily_trend=daily_trend,
         revenue_breakdown=revenue_breakdown,
-        expense_breakdown=expense_breakdown))
+        expense_breakdown=expense_breakdown,
+        current_view='monthly'))
     
-    # Disable caching
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
+@app.route('/analytics/trends')
+@require_role('boss')
+def analytics_trends():
+    """Boss views 7-day trends."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    daily_trend = analytics.get_daily_trend(boss_id, 7, today)
+    
+    response = make_response(render_template('analytics_trends.html',
+        arena_name=arena_name,
+        daily_trend=daily_trend,
+        current_view='trends'))
+    
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'

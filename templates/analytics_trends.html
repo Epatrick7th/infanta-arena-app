@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Trends - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-4xl font-bold text-white">Financial Analytics</h2>
+            <p class="text-slate-400 mt-1">{{ arena_name }} - 7-Day Trends</p>
+        </div>
+        <a href="/dashboard" class="px-4 py-2 btn-primary text-white rounded-lg">← Back to Dashboard</a>
+    </div>
+
+    <!-- NAVIGATION BUTTONS -->
+    <div class="flex gap-2 border-b border-slate-700 mb-6">
+        <a href="/analytics/daily" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Daily</a>
+        <a href="/analytics/weekly" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Weekly</a>
+        <a href="/analytics/monthly" class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent hover:text-white">Monthly</a>
+        <a href="/analytics/trends" class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500">Trends</a>
+    </div>
+
+    <!-- TRENDS TABLE -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-xl shadow-xl p-8">
+        <h3 class="text-2xl font-bold text-white mb-6">7-Day Revenue & Expense Trend</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-900/50">
+                    <tr class="border-b border-slate-700/50">
+                        <th class="px-6 py-4 text-left text-slate-400 font-semibold text-sm">Date</th>
+                        <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Revenue</th>
+                        <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Expenses</th>
+                        <th class="px-6 py-4 text-right text-slate-400 font-semibold text-sm">Net Profit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in daily_trend %}
+                    <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td class="px-6 py-4 text-slate-300 font-medium">{{ day.date }}</td>
+                        <td class="px-6 py-4 text-right text-blue-400 font-semibold">{{ "{:,.0f}".format(day.revenue) }}</td>
+                        <td class="px-6 py-4 text-right text-red-400 font-semibold">{{ "{:,.0f}".format(day.expenses) }}</td>
+                        <td class="px-6 py-4 text-right font-semibold {% if day.net > 0 %}text-emerald-400{% else %}text-red-400{% endif %}">{{ "{:,.0f}".format(day.net) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
