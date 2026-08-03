@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, make_response
 import db
 import boss_db
 import boss_approval
@@ -524,14 +524,21 @@ def analytics_dashboard():
     revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
     expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
     
-    return render_template('analytics.html',
+    response = make_response(render_template('analytics.html',
         arena_name=arena_name,
         daily_pl=daily_pl,
         weekly_pl=weekly_pl,
         monthly_pl=monthly_pl,
         daily_trend=daily_trend,
         revenue_breakdown=revenue_breakdown,
-        expense_breakdown=expense_breakdown)
+        expense_breakdown=expense_breakdown))
+    
+    # Disable caching
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
 
 @app.route('/api/users/<username>', methods=['DELETE'])
 @require_role('super_admin', 'admin')
