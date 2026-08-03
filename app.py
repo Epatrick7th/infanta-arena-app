@@ -1,11 +1,12 @@
 import os
 import secrets
 from datetime import date
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, make_response, g
 import db
 import boss_db
 import boss_approval
 import analytics
+import live_fight
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
@@ -496,6 +497,170 @@ def new_user():
             flash(f"Error: {str(e)}", "error")
     
     return render_template('new_user.html', roles=db.ROLES, role_labels=ROLE_LABELS)
+
+# ===== LIVE ARENA FIGHT DASHBOARD =====
+
+@app.route('/live-arena')
+@require_role('boss', 'admin')
+def live_arena():
+    """Live arena fight dashboard - real-time fight and betting view."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Get current/live event for today
+    conn = db.get_connection()
+    event = conn.execute(
+        f"SELECT id, name, event_type FROM events WHERE boss_id = ? AND date = ? AND {db.NOT_DELETED} ORDER BY created_at DESC LIMIT 1",
+        (boss_id, today)
+    ).fetchone()
+    conn.close()
+    
+    event_id = event['id'] if event else None
+    event_name = event['name'] if event else 'No Event Today'
+    
+    # Get live or next fight
+    live_fight_data = live_fight.get_live_fight(boss_id, event_id)
+    
+    if not live_fight_data:
+        flash("No fights scheduled. Create a fight to begin.", "info")
+        return render_template('live_arena.html',
+            arena_name=arena_name,
+            event_name=event_name,
+            fight=None,
+            bets_summary=None)
+    
+    # Get recent bets (last 10)
+    recent_bets = live_fight.get_fight_bets(live_fight_data['id'])[:10]
+    
+    response = make_response(render_template('live_arena.html',
+        arena_name=arena_name,
+        event_name=event_name,
+        fight=live_fight_data,
+        bets_summary=live_fight_data if live_fight_data else None,
+        recent_bets=recent_bets))
+    
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
+@app.route('/api/live-fight/<int:fight_id>')
+@require_role('boss', 'admin')
+def api_live_fight(fight_id):
+    """API endpoint for live fight data (for polling/WebSocket)."""
+    conn = db.get_connection()
+    fight = conn.execute("SELECT * FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    conn.close()
+    
+    if not fight:
+        return jsonify({'error': 'Fight not found'}), 404
+    
+    # Verify access
+    user_id = session.get('user_id')
+    if fight['boss_id'] != user_id and session.get('user_role') != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    fight_dict = dict(fight)
+    bets = live_fight.get_fight_bets_summary(fight_id)
+    
+    return jsonify({
+        **fight_dict,
+        **bets
+    })
+
+@app.route('/api/live-fight/<int:fight_id>/bets')
+@require_role('boss', 'admin')
+def api_fight_bets(fight_id):
+    """Get recent bets for a fight."""
+    conn = db.get_connection()
+    fight = conn.execute("SELECT boss_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    conn.close()
+    
+    if not fight:
+        return jsonify({'error': 'Fight not found'}), 404
+    
+    # Verify access
+    user_id = session.get('user_id')
+    if fight['boss_id'] != user_id and session.get('user_role') != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    bets = live_fight.get_fight_bets(fight_id)
+    return jsonify({'bets': bets, 'count': len(bets)})
+
+@app.route('/api/live-fight/<int:fight_id>/start', methods=['POST'])
+@require_role('boss', 'admin')
+def api_start_fight(fight_id):
+    """Start a fight (change status to live)."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    fight = conn.execute("SELECT boss_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    conn.close()
+    
+    if not fight or fight['boss_id'] != user_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    if live_fight.start_fight(fight_id):
+        return jsonify({'status': 'ok', 'message': 'Fight started'})
+    return jsonify({'error': 'Failed to start fight'}), 500
+
+@app.route('/api/live-fight/<int:fight_id>/finish', methods=['POST'])
+@require_role('boss', 'admin')
+def api_finish_fight(fight_id):
+    """Finish a fight with a winner."""
+    user_id = session.get('user_id')
+    data = request.get_json()
+    winner = data.get('winner')  # 'Meron', 'Wala', or 'Draw'
+    
+    if not winner or winner not in ['Meron', 'Wala', 'Draw']:
+        return jsonify({'error': 'Invalid winner'}), 400
+    
+    conn = db.get_connection()
+    fight = conn.execute("SELECT boss_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    conn.close()
+    
+    if not fight or fight['boss_id'] != user_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    if live_fight.finish_fight(fight_id, winner):
+        return jsonify({'status': 'ok', 'message': f'Fight finished - {winner} wins'})
+    return jsonify({'error': 'Failed to finish fight'}), 500
+
+@app.route('/api/live-fight/<int:fight_id>/bet', methods=['POST'])
+@require_role('boss', 'admin')
+def api_add_bet(fight_id):
+    """Add a bet to a live fight."""
+    user_id = session.get('user_id')
+    data = request.get_json()
+    
+    side = data.get('side')  # 'Meron' or 'Wala'
+    amount = data.get('amount', 0)
+    bettor_name = data.get('bettor_name', 'Anonymous')
+    
+    if not side or side not in ['Meron', 'Wala'] or amount <= 0:
+        return jsonify({'error': 'Invalid bet'}), 400
+    
+    conn = db.get_connection()
+    fight = conn.execute("SELECT boss_id FROM fights WHERE id = ?", (fight_id,)).fetchone()
+    conn.close()
+    
+    if not fight or fight['boss_id'] != user_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    if live_fight.add_bet(fight_id, user_id, side, amount, bettor_name, session.get('username')):
+        bets_summary = live_fight.get_fight_bets_summary(fight_id)
+        return jsonify({'status': 'ok', 'bet_added': True, **bets_summary})
+    return jsonify({'error': 'Failed to add bet'}), 500
 
 # ===== ANALYTICS DETAIL ROUTES (Drilldowns) =====
 

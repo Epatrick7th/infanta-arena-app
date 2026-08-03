@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% block title %}Live Arena - {{ arena_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .pulse-ring {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+        50% { box-shadow: 0 0 0 20px rgba(251, 191, 36, 0); }
+    }
+    .fight-arena {
+        background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 100%);
+        border: 3px solid #fbbf24;
+        box-shadow: inset 0 0 60px rgba(251, 191, 36, 0.2), 0 0 40px rgba(251, 191, 36, 0.3);
+    }
+    .side-card {
+        transition: all 0.3s ease;
+    }
+    .side-card:hover {
+        transform: scale(1.02);
+    }
+    .bet-ticker {
+        max-height: 300px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #fbbf24 #1a1a2e;
+    }
+    .bet-entry {
+        animation: slideInLeft 0.3s ease-out;
+    }
+    @keyframes slideInLeft {
+        from { transform: translateX(-20px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+
+<div class="space-y-6">
+    <!-- HEADER -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-5xl font-black bg-gradient-to-r from-gold-400 to-gold-500 bg-clip-text text-transparent">LIVE ARENA</h1>
+            <p class="text-2xl text-gold-400 font-bold mt-1">{{ arena_name }}</p>
+            <p class="text-slate-400 text-sm mt-1">{{ event_name }}</p>
+        </div>
+        <a href="/dashboard" class="px-6 py-3 btn-primary text-white rounded-lg font-semibold">← Dashboard</a>
+    </div>
+
+    {% if fight %}
+    <!-- LIVE FIGHT DISPLAY -->
+    <div class="fight-arena rounded-2xl p-12 space-y-8">
+        
+        <!-- FIGHT NUMBER & STATUS -->
+        <div class="flex items-center justify-between">
+            <div class="text-center flex-1">
+                <div class="text-8xl font-black text-gold-400 drop-shadow-lg">FIGHT #{{ fight.fight_number }}</div>
+                <div class="text-2xl font-bold {% if fight.status == 'live' %}text-red-400 pulse-ring{% elif fight.status == 'finished' %}text-emerald-400{% else %}text-yellow-400{% endif %} mt-2">
+                    {% if fight.status == 'live' %}🔴 LIVE IN PROGRESS{% elif fight.status == 'finished' %}✓ FINISHED{% else %}⏳ PENDING{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- FIGHTERS & BET SUMMARY -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- MERON SIDE -->
+            <div class="side-card bg-gradient-to-br from-red-900/50 to-red-950/50 border-2 border-red-600/50 rounded-xl p-8 text-center hover:border-red-500 hover:shadow-lg hover:shadow-red-500/20">
+                <div class="text-red-300 text-sm font-semibold uppercase mb-2">MERON</div>
+                <div class="text-4xl font-black text-red-400 mb-2">{{ fight.meron_owner or '?' }}</div>
+                
+                <div class="mt-6 space-y-2 bg-red-900/30 rounded-lg p-6">
+                    <div class="text-red-200 text-sm">Total Bets</div>
+                    <div class="text-5xl font-black text-red-300">{{ "{:,.0f}".format(fight.meron_total) }}</div>
+                    <div class="text-red-400 text-xs mt-2">{{ fight.meron_count }} bets • {{ fight.meron_pct }}% of total</div>
+                </div>
+
+                {% if fight.status != 'finished' %}
+                <button onclick="addBet('Meron')" class="mt-6 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105">
+                    + ADD BET FOR MERON
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- WALA SIDE -->
+            <div class="side-card bg-gradient-to-br from-blue-900/50 to-blue-950/50 border-2 border-blue-600/50 rounded-xl p-8 text-center hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20">
+                <div class="text-blue-300 text-sm font-semibold uppercase mb-2">WALA</div>
+                <div class="text-4xl font-black text-blue-400 mb-2">{{ fight.wala_owner or '?' }}</div>
+                
+                <div class="mt-6 space-y-2 bg-blue-900/30 rounded-lg p-6">
+                    <div class="text-blue-200 text-sm">Total Bets</div>
+                    <div class="text-5xl font-black text-blue-300">{{ "{:,.0f}".format(fight.wala_total) }}</div>
+                    <div class="text-blue-400 text-xs mt-2">{{ fight.wala_count }} bets • {{ fight.wala_pct }}% of total</div>
+                </div>
+
+                {% if fight.status != 'finished' %}
+                <button onclick="addBet('Wala')" class="mt-6 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-all transform hover:scale-105">
+                    + ADD BET FOR WALA
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TOTAL ACTION -->
+        <div class="bg-gradient-to-r from-gold-900/50 to-gold-950/50 border-2 border-gold-600/50 rounded-xl p-8 text-center">
+            <div class="text-gold-300 text-sm font-semibold uppercase mb-2">Total Money in Play</div>
+            <div class="text-6xl font-black text-gold-300">{{ "{:,.0f}".format(fight.total_bets) }}</div>
+            <div class="text-gold-400 text-sm mt-2">{{ fight.meron_count + fight.wala_count }} total bets</div>
+        </div>
+
+        <!-- FIGHT CONTROLS -->
+        {% if fight.status == 'pending' %}
+        <div class="flex gap-4 justify-center">
+            <button onclick="startFight({{ fight.id }})" class="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-lg transition-all transform hover:scale-105">
+                🔔 START FIGHT
+            </button>
+        </div>
+        {% elif fight.status == 'live' %}
+        <div class="flex gap-4 justify-center">
+            <button onclick="finishFight({{ fight.id }}, 'Meron')" class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-all transform hover:scale-105">
+                Meron Wins
+            </button>
+            <button onclick="finishFight({{ fight.id }}, 'Wala')" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-all transform hover:scale-105">
+                Wala Wins
+            </button>
+            <button onclick="finishFight({{ fight.id }}, 'Draw')" class="px-6 py-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded-lg transition-all transform hover:scale-105">
+                Draw
+            </button>
+        </div>
+        {% elif fight.status == 'finished' %}
+        <div class="text-center">
+            <div class="text-3xl font-black text-emerald-400 mb-4">
+                {% if fight.winner == 'Meron' %}
+                🏆 MERON WINS! 🏆
+                {% elif fight.winner == 'Wala' %}
+                🏆 WALA WINS! 🏆
+                {% else %}
+                ⚖️ DRAW ⚖️
+                {% endif %}
+            </div>
+            <a href="/live-arena" class="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg transition-all">
+                Next Fight
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- BET TICKER -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-gold-600/30 rounded-xl p-8">
+        <h2 class="text-2xl font-bold text-gold-400 mb-4">📊 Recent Bets</h2>
+        <div class="bet-ticker">
+            {% if recent_bets %}
+                {% for bet in recent_bets %}
+                <div class="bet-entry bg-slate-700/50 border-l-4 {% if bet.side == 'Meron' %}border-red-500{% else %}border-blue-500{% endif %} rounded p-3 mb-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-xs font-semibold {% if bet.side == 'Meron' %}text-red-400{% else %}text-blue-400{% endif %} uppercase">{{ bet.side }}</span>
+                            <span class="ml-2 text-slate-300 text-sm">{{ bet.bettor_name or 'Anonymous' }}</span>
+                        </div>
+                        <span class="text-gold-400 font-bold">{{ "{:,.0f}".format(bet.amount) }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p class="text-slate-400 text-center py-6">No bets yet. Start accepting bets when the fight begins!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- NO FIGHTS MESSAGE -->
+    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-dashed border-gold-600/50 rounded-2xl p-12 text-center">
+        <div class="text-6xl mb-4">🎭</div>
+        <h2 class="text-3xl font-bold text-white mb-2">No Fights Scheduled</h2>
+        <p class="text-slate-400 mb-6">Create a fight in the events section to begin taking live bets.</p>
+        <a href="/events" class="px-6 py-3 bg-gold-600 hover:bg-gold-500 text-white font-bold rounded-lg transition-all">
+            → Create Fight
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- MODALS -->
+<div id="betModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-gradient-to-br from-slate-900 to-slate-800 border border-gold-600 rounded-2xl p-8 max-w-md w-full mx-4">
+        <h3 class="text-3xl font-bold text-gold-400 mb-6" id="betModalTitle">Add Bet</h3>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-slate-300 text-sm font-semibold mb-2">Bettor Name</label>
+                <input type="text" id="bettorName" placeholder="Enter name or leave blank" class="w-full bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-gold-500">
+            </div>
+            
+            <div>
+                <label class="block text-slate-300 text-sm font-semibold mb-2">Bet Amount</label>
+                <input type="number" id="betAmount" placeholder="0.00" class="w-full bg-slate-700 border border-slate-600 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-gold-500" step="0.01" min="0">
+            </div>
+
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeBetModal()" class="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white font-bold rounded-lg transition-all">
+                    Cancel
+                </button>
+                <button onclick="submitBet()" class="flex-1 px-4 py-2 bg-gold-600 hover:bg-gold-500 text-white font-bold rounded-lg transition-all">
+                    Place Bet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentBetSide = null;
+const fightId = {{ fight.id if fight else 'null' }};
+
+function addBet(side) {
+    currentBetSide = side;
+    document.getElementById('betModalTitle').textContent = `Add Bet for ${side}`;
+    document.getElementById('betModal').classList.remove('hidden');
+    document.getElementById('bettorName').focus();
+}
+
+function closeBetModal() {
+    document.getElementById('betModal').classList.add('hidden');
+    document.getElementById('bettorName').value = '';
+    document.getElementById('betAmount').value = '';
+}
+
+function submitBet() {
+    const amount = parseFloat(document.getElementById('betAmount').value);
+    const name = document.getElementById('bettorName').value;
+
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid amount');
+        return;
+    }
+
+    fetch(`/api/live-fight/${fightId}/bet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            side: currentBetSide,
+            amount: amount,
+            bettor_name: name || 'Anonymous'
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            closeBetModal();
+            location.reload(); // Reload to show updated bets
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(e => alert('Error placing bet: ' + e));
+}
+
+function startFight(id) {
+    if (!confirm('Start this fight? Betting will remain open.')) return;
+    fetch(`/api/live-fight/${id}/start`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') location.reload();
+            else alert('Error: ' + data.error);
+        });
+}
+
+function finishFight(id, winner) {
+    if (!confirm(`Finish fight with ${winner} winning?`)) return;
+    fetch(`/api/live-fight/${id}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ winner: winner })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') location.reload();
+        else alert('Error: ' + data.error);
+    });
+}
+
+// Auto-refresh every 3 seconds
+setInterval(() => { location.reload(); }, 3000);
+</script>
+
+{% endblock %}

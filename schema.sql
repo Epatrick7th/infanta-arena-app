@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS fights (
     plasada_amount REAL,
     pit_fee REAL,
     notes TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','live','finished')),
+    started_at TEXT,
+    finished_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     created_by TEXT,
     deleted_at TEXT
@@ -59,6 +62,25 @@ CREATE TABLE IF NOT EXISTS fights (
 CREATE INDEX IF NOT EXISTS idx_fights_boss_id ON fights(boss_id);
 CREATE INDEX IF NOT EXISTS idx_fights_event_id ON fights(event_id);
 CREATE INDEX IF NOT EXISTS idx_fights_date ON fights(date);
+
+-- Live bets placed on fights
+CREATE TABLE IF NOT EXISTS fight_bets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    boss_id INTEGER NOT NULL REFERENCES users(id),
+    fight_id INTEGER NOT NULL REFERENCES fights(id),
+    side TEXT NOT NULL CHECK(side IN ('Meron','Wala')),
+    amount REAL NOT NULL,
+    bettor_name TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','won','lost','push')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_by TEXT,
+    deleted_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_fight_bets_boss_id ON fight_bets(boss_id);
+CREATE INDEX IF NOT EXISTS idx_fight_bets_fight_id ON fight_bets(fight_id);
+CREATE INDEX IF NOT EXISTS idx_fight_bets_side ON fight_bets(side);
+CREATE INDEX IF NOT EXISTS idx_fight_bets_date ON fight_bets(created_at);
 
 -- Revenue: each fight generates plasada (house commission), pit fees, misc revenue per event
 CREATE TABLE IF NOT EXISTS event_revenue (
