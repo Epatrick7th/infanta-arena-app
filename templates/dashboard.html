@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>🐓 Dashboard</h1>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="value">{{ recent_events|length }}</div>
+    <div class="label">Recent Events</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">₱{{ "{:,.2f}".format(total_expenses) }}</div>
+    <div class="label">Total Expenses</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Navigation</h2>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+    <a href="{{ url_for('events_page') }}" class="btn">📅 Events</a>
+    <a href="{{ url_for('expenses_page') }}" class="btn">💰 Expenses</a>
+    <a href="{{ url_for('remittances_page') }}" class="btn">🏦 Remittances</a>
+    <a href="{{ url_for('personnel_page') }}" class="btn">👥 Personnel</a>
+    <a href="{{ url_for('shift_roster_page') }}" class="btn">📋 Roster</a>
+    {% if current_role in ['super_admin', 'admin'] %}
+    <a href="{{ url_for('users_page') }}" class="btn">🔐 Users</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if recent_events %}
+<div class="card">
+  <h2>Recent Events</h2>
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Name</th><th>Type</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for event in recent_events %}
+      <tr>
+        <td>{{ event.date }}</td>
+        <td><a href="{{ url_for('event_detail', event_id=event.id) }}" style="color: #3498db; text-decoration: none;">{{ event.name }}</a></td>
+        <td>{{ event.event_type }}</td>
+        <td><a href="{{ url_for('event_detail', event_id=event.id) }}" class="btn btn-sm">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

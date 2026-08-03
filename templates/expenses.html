@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Expenses - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>💰 Expenses</h1>
+<a href="{{ url_for('new_expense') }}" class="btn">+ New Expense</a>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th></tr>
+    </thead>
+    <tbody id="expenses-body">
+      <tr><td colspan="4" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function loadExpenses() {
+  const resp = await fetch('{{ url_for("api_expenses") }}');
+  const data = await resp.json();
+  const tbody = document.getElementById('expenses-body');
+  tbody.innerHTML = '';
+  if (!data.rows || data.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No expenses yet.</td></tr>';
+  } else {
+    data.rows.forEach(e => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${e.date}</td><td>${e.description || '-'}</td><td>${e.category || '-'}</td><td>₱${e.amount.toFixed(2)}</td>`;
+      tbody.appendChild(row);
+    });
+  }
+}
+loadExpenses();
+</script>
+{% endblock %}

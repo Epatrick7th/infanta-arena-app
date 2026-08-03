@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}New User - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>🔐 Create User</h1>
+
+<div class="card" style="max-width: 600px;">
+  <form method="post">
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" name="username" required>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" name="password" required>
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select name="role" required>
+        {% for role in roles %}
+        <option value="{{ role }}">{{ role_labels[role] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn">Create User</button>
+    <a href="{{ url_for('users_page') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

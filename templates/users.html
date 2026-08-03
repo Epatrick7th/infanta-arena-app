@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Users - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>🔐 Users</h1>
+<a href="{{ url_for('new_user') }}" class="btn">+ New User</a>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.username }}</td>
+        <td>{{ role_labels[user.role] }}</td>
+        <td>{{ user.created_at }}</td>
+        <td>
+          {% if user.username != session.get('username') %}
+          <button onclick="deleteUser('{{ user.username }}')" class="btn btn-sm btn-danger">Delete</button>
+          {% else %}
+          <span style="color: #7f8c8d; font-size: 0.9rem;">(Current)</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function deleteUser(username) {
+  if (confirm('Delete user ' + username + '?')) {
+    await fetch(`/api/users/${username}`, {method: 'DELETE'});
+    location.reload();
+  }
+}
+</script>
+{% endblock %}

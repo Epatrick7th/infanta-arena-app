@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}New Event - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>📅 New Event</h1>
+
+<div class="card" style="max-width: 600px;">
+  <form method="post">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" name="date" required>
+    </div>
+    <div class="form-group">
+      <label>Event Name</label>
+      <input type="text" name="name" required>
+    </div>
+    <div class="form-group">
+      <label>Event Type</label>
+      <select name="event_type" required>
+        <option value="">-- Select --</option>
+        <option value="hackfight">Hackfight</option>
+        <option value="derby">Derby</option>
+        <option value="tournament">Tournament</option>
+        <option value="special">Special</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea name="note" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn">Create Event</button>
+    <a href="{{ url_for('events_page') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

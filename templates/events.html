@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Events - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>📅 Events</h1>
+<a href="{{ url_for('new_event') }}" class="btn">+ New Event</a>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <table id="events-table">
+    <thead>
+      <tr><th>Date</th><th>Name</th><th>Type</th><th></th></tr>
+    </thead>
+    <tbody id="events-body">
+      <tr><td colspan="4" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function loadEvents() {
+  const resp = await fetch('{{ url_for("api_events") }}');
+  const data = await resp.json();
+  const tbody = document.getElementById('events-body');
+  tbody.innerHTML = '';
+  if (data.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No events yet.</td></tr>';
+  } else {
+    data.rows.forEach(e => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${e.date}</td><td><a href="/events/${e.id}" style="color: #3498db;">${e.name}</a></td><td>${e.event_type}</td><td><a href="/events/${e.id}" class="btn btn-sm">View</a></td>`;
+      tbody.appendChild(row);
+    });
+  }
+}
+loadEvents();
+</script>
+{% endblock %}

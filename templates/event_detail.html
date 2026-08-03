@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.name }} - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>{{ event.name }} ({{ event.date }})</h1>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="value">{{ summary.fight_count }}</div>
+    <div class="label">Fights</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">₱{{ "{:,.2f}".format(summary.total_revenue) }}</div>
+    <div class="label">Revenue</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Fights</h2>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Meron</th><th>Wala</th><th>Winner</th><th>Plasada</th></tr>
+    </thead>
+    <tbody>
+      {% if fights %}
+        {% for fight in fights %}
+        <tr>
+          <td>{{ fight.fight_number }}</td>
+          <td>{{ fight.meron_owner }}</td>
+          <td>{{ fight.wala_owner }}</td>
+          <td>{{ fight.winner or '-' }}</td>
+          <td>₱{{ fight.plasada_amount or 0 }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr><td colspan="5" style="text-align: center; padding: 1rem;">No fights yet.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Revenue</h2>
+  <table>
+    <thead>
+      <tr><th>Source</th><th>Amount</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+      {% if revenue %}
+        {% for rev in revenue %}
+        <tr>
+          <td>{{ rev.source }}</td>
+          <td>₱{{ rev.amount }}</td>
+          <td>{{ rev.description or '-' }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr><td colspan="3" style="text-align: center; padding: 1rem;">No revenue recorded.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<a href="{{ url_for('events_page') }}" class="btn">← Back</a>
+{% endblock %}

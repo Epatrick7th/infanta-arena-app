@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}New Remittance - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>🏦 New Remittance</h1>
+
+<div class="card" style="max-width: 600px;">
+  <form method="post">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" name="date" required>
+    </div>
+    <div class="form-group">
+      <label>Amount (₱)</label>
+      <input type="number" name="amount" step="0.01" required>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea name="note" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn">Record Remittance</button>
+    <a href="{{ url_for('remittances_page') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

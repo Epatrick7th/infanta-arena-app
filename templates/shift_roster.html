@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Shift Roster - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>📋 Shift Roster: {{ roster_date }}</h1>
+
+<div style="margin-bottom: 1.5rem;">
+  <label>Change Date:</label>
+  <input type="date" id="roster-date" value="{{ roster_date }}" style="width: auto; display: inline; padding: 0.4rem;">
+  <button onclick="changeDate()" class="btn btn-sm">Go</button>
+</div>
+
+<div class="card">
+  <h2>Assignments</h2>
+  <table>
+    <thead>
+      <tr><th>Shift</th><th>Personnel</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% if roster %}
+        {% for row in roster %}
+        <tr>
+          <td>{{ row.shift_name }}</td>
+          <td>{{ row.personnel_name }}</td>
+          <td>{{ row.status }}</td>
+          <td>
+            <select onchange="updateStatus({{ row.id }}, this.value)" style="width: auto;">
+              <option value="Present" {% if row.status == 'Present' %}selected{% endif %}>Present</option>
+              <option value="Late" {% if row.status == 'Late' %}selected{% endif %}>Late</option>
+              <option value="Absent" {% if row.status == 'Absent' %}selected{% endif %}>Absent</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      {% else %}
+      <tr><td colspan="4" style="text-align: center; padding: 1rem;">No assignments yet.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function changeDate() {
+  const d = document.getElementById('roster-date').value;
+  window.location.href = '{{ url_for("shift_roster_page") }}?date=' + d;
+}
+async function updateStatus(rosterId, status) {
+  await fetch(`/api/shift-roster/${rosterId}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status})
+  });
+}
+</script>
+{% endblock %}

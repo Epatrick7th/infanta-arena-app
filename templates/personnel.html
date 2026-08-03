@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Personnel - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>👥 Personnel</h1>
+<a href="{{ url_for('new_personnel') }}" class="btn">+ Add Personnel</a>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Position</th><th>Status</th><th>Rate/Shift</th></tr>
+    </thead>
+    <tbody id="personnel-body">
+      <tr><td colspan="4" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function loadPersonnel() {
+  const resp = await fetch('{{ url_for("api_personnel") }}?status=Active');
+  const data = await resp.json();
+  const tbody = document.getElementById('personnel-body');
+  tbody.innerHTML = '';
+  if (!data.rows || data.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No personnel yet.</td></tr>';
+  } else {
+    data.rows.forEach(p => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${p.name}</td><td>${p.position}</td><td>${p.status}</td><td>₱${p.rate_per_shift || 0}</td>`;
+      tbody.appendChild(row);
+    });
+  }
+}
+loadPersonnel();
+</script>
+{% endblock %}

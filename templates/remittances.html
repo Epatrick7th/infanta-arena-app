@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Remittances - Sabong Arena Hub{% endblock %}
+{% block content %}
+<h1>🏦 Cash Remittances</h1>
+<a href="{{ url_for('new_remittance') }}" class="btn">+ New Remittance</a>
+
+<div class="card" style="margin-top: 1.5rem;">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Amount</th><th>Note</th></tr>
+    </thead>
+    <tbody id="remittances-body">
+      <tr><td colspan="3" style="text-align: center; padding: 2rem;">Loading...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+async function loadRemittances() {
+  const resp = await fetch('{{ url_for("api_remittances") }}');
+  const data = await resp.json();
+  const tbody = document.getElementById('remittances-body');
+  tbody.innerHTML = '';
+  if (!data.rows || data.rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">No remittances yet.</td></tr>';
+  } else {
+    data.rows.forEach(r => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${r.date}</td><td>₱${r.amount.toFixed(2)}</td><td>${r.note || '-'}</td>`;
+      tbody.appendChild(row);
+    });
+  }
+}
+loadRemittances();
+</script>
+{% endblock %}
