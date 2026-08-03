@@ -497,6 +497,135 @@ def new_user():
     
     return render_template('new_user.html', roles=db.ROLES, role_labels=ROLE_LABELS)
 
+# ===== ANALYTICS DETAIL ROUTES (Drilldowns) =====
+
+@app.route('/analytics/sales-today')
+@require_role('boss')
+def analytics_sales_today():
+    """View all sales transactions for today."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Get all sales for today
+    conn = boss_db.get_connection()
+    sales = conn.execute("""
+        SELECT id, transaction_date, amount, sales_type, status, created_at
+        FROM sales
+        WHERE user_id = ? AND DATE(transaction_date) = ?
+        ORDER BY created_at DESC
+    """, (boss_id, today)).fetchall()
+    conn.close()
+    
+    total_revenue = sum(s['amount'] for s in sales) if sales else 0
+    
+    return render_template('analytics_sales_today.html',
+        arena_name=arena_name,
+        sales=sales,
+        total_revenue=total_revenue,
+        today=today)
+
+@app.route('/analytics/revenue-vs-expenses-today')
+@require_role('boss')
+def analytics_revenue_vs_expenses():
+    """View revenue vs expenses comparison for today."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Get sales (revenue)
+    conn = boss_db.get_connection()
+    sales = conn.execute("""
+        SELECT id, transaction_date, amount, sales_type, status, created_at
+        FROM sales
+        WHERE user_id = ? AND DATE(transaction_date) = ?
+        ORDER BY created_at DESC
+    """, (boss_id, today)).fetchall()
+    conn.close()
+    
+    # Get expenses
+    conn = boss_db.get_connection()
+    expenses = conn.execute("""
+        SELECT id, transaction_date, amount, category, description, created_at
+        FROM expenses
+        WHERE user_id = ? AND DATE(transaction_date) = ?
+        ORDER BY created_at DESC
+    """, (boss_id, today)).fetchall()
+    conn.close()
+    
+    total_revenue = sum(s['amount'] for s in sales) if sales else 0
+    total_expenses = sum(e['amount'] for e in expenses) if expenses else 0
+    net_profit = total_revenue - total_expenses
+    
+    return render_template('analytics_revenue_vs_expenses.html',
+        arena_name=arena_name,
+        sales=sales,
+        expenses=expenses,
+        total_revenue=total_revenue,
+        total_expenses=total_expenses,
+        net_profit=net_profit,
+        today=today)
+
+@app.route('/analytics/sales-by-type/<sales_type>')
+@require_role('boss')
+def analytics_sales_by_type(sales_type):
+    """View sales filtered by type (gate, concession, plasada)."""
+    user_id = session.get('user_id')
+    conn = db.get_connection()
+    user = conn.execute("SELECT id, arena_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('login'))
+    
+    boss_id = user['id']
+    arena_name = user['arena_name'] or 'My Arena'
+    today = date.today().isoformat()
+    
+    # Normalize sales_type
+    valid_types = {'gate', 'concession', 'plasada'}
+    if sales_type.lower() not in valid_types:
+        flash("Invalid sales type.", "error")
+        return redirect(url_for('analytics_daily'))
+    
+    # Get sales for this type today
+    conn = boss_db.get_connection()
+    sales = conn.execute("""
+        SELECT id, transaction_date, amount, sales_type, status, created_at
+        FROM sales
+        WHERE user_id = ? AND DATE(transaction_date) = ? AND LOWER(sales_type) = ?
+        ORDER BY created_at DESC
+    """, (boss_id, today, sales_type.lower())).fetchall()
+    conn.close()
+    
+    total_revenue = sum(s['amount'] for s in sales) if sales else 0
+    
+    return render_template('analytics_sales_by_type.html',
+        arena_name=arena_name,
+        sales=sales,
+        sales_type=sales_type.title(),
+        total_revenue=total_revenue,
+        today=today)
+
 # ===== ANALYTICS ROUTES =====
 
 @app.route('/analytics')
