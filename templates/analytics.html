@@ -172,35 +172,66 @@
 </div>
 
 <script>
-// Set up tab button click handlers
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const tabName = this.getAttribute('data-tab');
-        showTab(tabName);
+console.log("Analytics script starting...");
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM ready");
+    
+    // Set up tab button click handlers
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    console.log("Found", tabButtons.length, "tab buttons");
+    
+    tabButtons.forEach(btn => {
+        const tabName = btn.getAttribute('data-tab');
+        console.log("Setting up button for tab:", tabName);
+        
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log("Tab clicked:", tabName);
+            showTab(tabName);
+        });
     });
 });
 
 function showTab(tabName) {
-    // Hide all tabs
-    document.getElementById('daily-tab').classList.add('hidden');
-    document.getElementById('weekly-tab').classList.add('hidden');
-    document.getElementById('monthly-tab').classList.add('hidden');
-    document.getElementById('trends-tab').classList.add('hidden');
+    console.log("showTab called with:", tabName);
     
-    // Show selected tab
-    document.getElementById(tabName + '-tab').classList.remove('hidden');
-    
-    // Update tab buttons (only within analytics-tabs)
-    document.querySelectorAll('#analytics-tabs .tab-btn').forEach(btn => {
-        const btnTab = btn.getAttribute('data-tab');
-        if (btnTab === tabName) {
-            btn.classList.remove('text-slate-400', 'border-transparent');
-            btn.classList.add('text-white', 'border-gold-500');
+    try {
+        // Hide all tabs
+        const tabs = ['daily-tab', 'weekly-tab', 'monthly-tab', 'trends-tab'];
+        tabs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.add('hidden');
+                console.log("Hidden:", id);
+            }
+        });
+        
+        // Show selected tab
+        const selectedTab = document.getElementById(tabName + '-tab');
+        if (selectedTab) {
+            selectedTab.classList.remove('hidden');
+            console.log("Showed:", tabName + '-tab');
         } else {
-            btn.classList.add('text-slate-400', 'border-transparent');
-            btn.classList.remove('text-white', 'border-gold-500');
+            console.error("Tab not found:", tabName + '-tab');
         }
-    });
+        
+        // Update tab buttons (only within analytics-tabs)
+        document.querySelectorAll('#analytics-tabs .tab-btn').forEach(btn => {
+            const btnTab = btn.getAttribute('data-tab');
+            if (btnTab === tabName) {
+                btn.classList.remove('text-slate-400', 'border-transparent');
+                btn.classList.add('text-white', 'border-gold-500');
+                console.log("Highlighted button:", btnTab);
+            } else {
+                btn.classList.add('text-slate-400', 'border-transparent');
+                btn.classList.remove('text-white', 'border-gold-500');
+            }
+        });
+    } catch (err) {
+        console.error("Error in showTab:", err);
+    }
 }
 </script>
 
