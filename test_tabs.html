@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tab Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900">
+<div class="p-8 max-w-4xl mx-auto">
+    <h1 class="text-3xl text-white mb-8">Tab Switching Test</h1>
+    
+    <!-- TAB NAVIGATION -->
+    <div class="flex gap-2 border-b border-slate-700" id="analytics-tabs">
+        <button class="px-6 py-3 text-white font-semibold border-b-2 border-gold-500 cursor-pointer tab-btn" data-tab="daily">Daily</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="weekly">Weekly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="monthly">Monthly</button>
+        <button class="px-6 py-3 text-slate-400 font-semibold border-b-2 border-transparent cursor-pointer hover:text-white tab-btn" data-tab="trends">Trends</button>
+    </div>
+
+    <!-- DAILY TAB -->
+    <div id="daily-tab" class="mt-6 p-6 bg-blue-900 rounded text-white">
+        <h2 class="text-2xl mb-4">Daily Tab</h2>
+        <p>This is the daily content</p>
+    </div>
+
+    <!-- WEEKLY TAB -->
+    <div id="weekly-tab" class="mt-6 p-6 bg-green-900 rounded text-white hidden">
+        <h2 class="text-2xl mb-4">Weekly Tab</h2>
+        <p>This is the weekly content</p>
+    </div>
+
+    <!-- MONTHLY TAB -->
+    <div id="monthly-tab" class="mt-6 p-6 bg-purple-900 rounded text-white hidden">
+        <h2 class="text-2xl mb-4">Monthly Tab</h2>
+        <p>This is the monthly content</p>
+    </div>
+
+    <!-- TRENDS TAB -->
+    <div id="trends-tab" class="mt-6 p-6 bg-orange-900 rounded text-white hidden">
+        <h2 class="text-2xl mb-4">Trends Tab</h2>
+        <p>This is the trends content</p>
+    </div>
+
+</div>
+
+<script>
+console.log("Script loaded");
+
+// Set up tab button click handlers
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    console.log("Setting up button:", btn.getAttribute('data-tab'));
+    btn.addEventListener('click', function() {
+        const tabName = this.getAttribute('data-tab');
+        console.log("Clicked tab:", tabName);
+        showTab(tabName);
+    });
+});
+
+function showTab(tabName) {
+    console.log("showTab called with:", tabName);
+    
+    // Hide all tabs
+    document.getElementById('daily-tab').classList.add('hidden');
+    document.getElementById('weekly-tab').classList.add('hidden');
+    document.getElementById('monthly-tab').classList.add('hidden');
+    document.getElementById('trends-tab').classList.add('hidden');
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.remove('hidden');
+    
+    // Update tab buttons (only within analytics-tabs)
+    document.querySelectorAll('#analytics-tabs .tab-btn').forEach(btn => {
+        const btnTab = btn.getAttribute('data-tab');
+        if (btnTab === tabName) {
+            btn.classList.remove('text-slate-400', 'border-transparent');
+            btn.classList.add('text-white', 'border-gold-500');
+        } else {
+            btn.classList.add('text-slate-400', 'border-transparent');
+            btn.classList.remove('text-white', 'border-gold-500');
+        }
+    });
+    console.log("Tab switched to:", tabName);
+}
+</script>
+</body>
+</html>
