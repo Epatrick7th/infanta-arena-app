@@ -524,7 +524,7 @@ def analytics_dashboard():
     revenue_breakdown = analytics.get_revenue_breakdown(boss_id, today)
     expense_breakdown = analytics.get_expense_breakdown(boss_id, today)
     
-    response = make_response(render_template('analytics_simple.html',
+    response = make_response(render_template('analytics.html',
         arena_name=arena_name,
         daily_pl=daily_pl,
         weekly_pl=weekly_pl,
