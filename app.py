@@ -13,6 +13,71 @@ app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 ROLE_LABELS = db.ROLE_LABELS
 
+# --- JSON payload coercion ---------------------------------------------
+# request.get_json() returns a plain dict, so Werkzeug's `type=` kwarg is
+# not available here. These mirror it: coerce when possible, return the
+# default when the key is missing or the value will not convert.
+
+def _as_int(data, key, default=None):
+    try:
+        return int(data.get(key))
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(data, key, default=None):
+    try:
+        return float(data.get(key))
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_text(data, key, default=None):
+    """Trimmed string, or `default` when missing/blank. JSON may send non-strings."""
+    v = data.get(key)
+    if v is None:
+        return default
+    v = str(v).strip()
+    return v or default
+
+def current_boss_id():
+    """The boss whose books the logged-in user may see.
+
+    boss      -> their own id
+    assistant -> the boss who owns the same arena
+    admin     -> None, meaning "no filter" (unchanged behaviour)
+
+    Returning None for admins keeps the analytics and approval paths working
+    exactly as before; every other caller gets a hard filter.
+    """
+    role = session.get('user_role')
+    uid = session.get('user_id')
+    if role in ('admin', 'super_admin'):
+        return None
+    if role == 'boss':
+        return uid
+    # assistants and staff inherit their arena's boss
+    conn = db.get_connection()
+    row = conn.execute("SELECT arena_name FROM users WHERE id = ?", (uid,)).fetchone()
+    boss = None
+    if row and row['arena_name']:
+        boss = conn.execute(
+            "SELECT id FROM users WHERE role = 'boss' AND arena_name = ?",
+            (row['arena_name'],)).fetchone()
+    conn.close()
+    return boss['id'] if boss else uid
+
+
+def owns(record):
+    """True when the logged-in user may touch this record. Admins may touch all."""
+    if record is None:
+        return False
+    role = session.get('user_role')
+    if role in ('admin', 'super_admin'):
+        return True
+    return record.get('boss_id') == current_boss_id()
+
+
 # --- Auth & Access Control ---
 
 def require_login(f):
@@ -146,7 +211,8 @@ def dashboard():
     # ASSISTANT: Data entry dashboard - Input all numbers
     if user_role == 'assistant':
         # Get recent events for this arena (for the assistant to edit)
-        events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=10)
+        events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=10,
+                                       boss_id=current_boss_id())
         recent_events = events_result['rows'] if isinstance(events_result, dict) else events_result
         
         # Get summary for display
@@ -159,9 +225,10 @@ def dashboard():
             **dashboard_data)
     
     # STAFF: Show operational dashboard (fallback)
-    events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=5)
+    events_result = db.list_events(date_from=str(date(2026, 1, 1)), limit=5,
+                                   boss_id=current_boss_id())
     recent_events = events_result['rows'] if isinstance(events_result, dict) else events_result
-    total_expenses_result = db.list_expenses()
+    total_expenses_result = db.list_expenses(boss_id=current_boss_id())
     total_expenses_list = total_expenses_result['rows'] if isinstance(total_expenses_result, dict) else total_expenses_result
     total_expenses = sum(e['amount'] for e in total_expenses_list) if total_expenses_list else 0
     
@@ -183,7 +250,8 @@ def api_events():
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    result = db.list_events(date_from, date_to, limit, offset)
+    result = db.list_events(date_from, date_to, limit, offset,
+                            boss_id=current_boss_id())
     return jsonify(result)
 
 @app.route('/events/new', methods=['GET', 'POST'])
@@ -200,7 +268,8 @@ def new_event():
             return redirect(url_for('new_event'))
         
         try:
-            event_id = db.insert_event(date_str, name, event_type, note, g.username)
+            event_id = db.insert_event(date_str, name, event_type, note, g.username,
+                            boss_id=current_boss_id())
             flash(f"Event created.", "success")
             return redirect(url_for('event_detail', event_id=event_id))
         except Exception as e:
@@ -213,6 +282,10 @@ def new_event():
 def event_detail(event_id):
     event = db.get_event(event_id)
     if not event:
+        flash("Event not found.", "error")
+        return redirect(url_for('events_page'))
+    
+    if not owns(event):
         flash("Event not found.", "error")
         return redirect(url_for('events_page'))
     
@@ -229,21 +302,25 @@ def api_add_fight(event_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"error": "Event not found"}), 404
+    if not owns(event):
+        return jsonify({"error": "Access denied"}), 403
     
     data = request.get_json() or {}
-    fight_number = data.get('fight_number', type=int)
-    meron = data.get('meron', '').strip()
-    wala = data.get('wala', '').strip()
+    fight_number = _as_int(data, 'fight_number')
+    meron = _as_text(data, 'meron', '')
+    wala = _as_text(data, 'wala', '')
     winner = data.get('winner')
-    plasada = data.get('plasada', type=float)
-    pit_fee = data.get('pit_fee', type=float)
-    notes = data.get('notes', '').strip() or None
+    plasada = _as_float(data, 'plasada')
+    pit_fee = _as_float(data, 'pit_fee')
+    notes = _as_text(data, 'notes')
     
     if not all([fight_number, meron, wala]):
         return jsonify({"error": "Missing required fields"}), 400
     
     try:
-        fight_id = db.insert_fight(event_id, fight_number, event['date'], meron, wala, winner, plasada, pit_fee, notes, g.username)
+        fight_id = db.insert_fight(event_id, fight_number, event['date'], meron, wala, winner,
+                                   plasada, pit_fee, notes, g.username,
+                                   boss_id=event.get('boss_id') or current_boss_id())
         return jsonify({"id": fight_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -254,17 +331,21 @@ def api_add_revenue(event_id):
     event = db.get_event(event_id)
     if not event:
         return jsonify({"error": "Event not found"}), 404
+    if not owns(event):
+        return jsonify({"error": "Access denied"}), 403
     
     data = request.get_json() or {}
     source = data.get('source')
-    amount = data.get('amount', type=float)
-    description = data.get('description', '').strip() or None
+    amount = _as_float(data, 'amount')
+    description = _as_text(data, 'description')
     
     if not source or amount is None or amount < 0:
         return jsonify({"error": "Missing/invalid fields"}), 400
     
     try:
-        revenue_id = db.insert_event_revenue(event_id, event['date'], source, amount, description, g.username)
+        revenue_id = db.insert_event_revenue(event_id, event['date'], source, amount, description,
+                                       g.username,
+                                       boss_id=event.get('boss_id') or current_boss_id())
         return jsonify({"id": revenue_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -275,13 +356,15 @@ def api_fight(fight_id):
     fight = db.get_fight(fight_id)
     if not fight:
         return jsonify({"error": "Fight not found"}), 404
+    if not owns(fight):
+        return jsonify({"error": "Access denied"}), 403
     
     if request.method == 'PUT':
         data = request.get_json() or {}
         winner = data.get('winner')
-        plasada = data.get('plasada', type=float)
-        pit_fee = data.get('pit_fee', type=float)
-        notes = data.get('notes', '').strip() or None
+        plasada = _as_float(data, 'plasada')
+        pit_fee = _as_float(data, 'pit_fee')
+        notes = _as_text(data, 'notes')
         
         try:
             db.update_fight(fight_id, winner, plasada, pit_fee, notes)
@@ -312,7 +395,8 @@ def api_expenses():
     date_to = request.args.get('date_to')
     category = request.args.get('category')
     
-    result = db.list_expenses(date_from, date_to, category, limit, offset)
+    result = db.list_expenses(date_from, date_to, category, limit, offset,
+                              boss_id=current_boss_id())
     return jsonify(result)
 
 @app.route('/expenses/new', methods=['GET', 'POST'])
@@ -330,7 +414,8 @@ def new_expense():
             return redirect(url_for('new_expense'))
         
         try:
-            db.insert_expense(date_str, amount, description, category, note, g.username)
+            db.insert_expense(date_str, amount, description, category, note, g.username,
+                              boss_id=current_boss_id())
             flash("Expense recorded.", "success")
             return redirect(url_for('expenses_page'))
         except Exception as e:
@@ -353,7 +438,8 @@ def api_remittances():
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    result = db.list_cash_remittances(date_from, date_to, limit, offset)
+    result = db.list_cash_remittances(date_from, date_to, limit, offset,
+                                      boss_id=current_boss_id())
     return jsonify(result)
 
 @app.route('/remittances/new', methods=['GET', 'POST'])
@@ -369,7 +455,8 @@ def new_remittance():
             return redirect(url_for('new_remittance'))
         
         try:
-            db.insert_cash_remittance(date_str, amount, note, g.username)
+            db.insert_cash_remittance(date_str, amount, note, g.username,
+                                      boss_id=current_boss_id())
             flash("Remittance recorded.", "success")
             return redirect(url_for('remittances_page'))
         except Exception as e:
@@ -392,7 +479,8 @@ def api_personnel():
     status = request.args.get('status')
     position = request.args.get('position')
     
-    result = db.list_personnel(status, position, limit, offset)
+    result = db.list_personnel(status, position, limit, offset,
+                               boss_id=current_boss_id())
     return jsonify(result)
 
 @app.route('/personnel/new', methods=['GET', 'POST'])
@@ -410,7 +498,8 @@ def new_personnel():
             return redirect(url_for('new_personnel'))
         
         try:
-            db.insert_personnel(name, position, contact, date_hired, 'Active', rate, g.username)
+            db.insert_personnel(name, position, contact, date_hired, 'Active', rate,
+                                g.username, boss_id=current_boss_id())
             flash("Personnel added.", "success")
             return redirect(url_for('personnel_page'))
         except Exception as e:
@@ -424,9 +513,9 @@ def new_personnel():
 @require_login
 def shift_roster_page():
     roster_date = request.args.get('date', date.today().isoformat())
-    roster = db.get_shift_roster(roster_date)
+    roster = db.get_shift_roster(roster_date, boss_id=current_boss_id())
     shift_types = db.list_shift_types()
-    personnel = db.list_personnel(status='Active')
+    personnel = db.list_personnel(status='Active', boss_id=current_boss_id())
     
     return render_template('shift_roster.html', 
         roster_date=roster_date, roster=roster, 
@@ -437,15 +526,16 @@ def shift_roster_page():
 def api_add_roster():
     data = request.get_json() or {}
     date_str = data.get('date')
-    shift_type_id = data.get('shift_type_id', type=int)
-    personnel_id = data.get('personnel_id', type=int)
+    shift_type_id = _as_int(data, 'shift_type_id')
+    personnel_id = _as_int(data, 'personnel_id')
     status = data.get('status', 'Present')
     
     if not all([date_str, shift_type_id, personnel_id]):
         return jsonify({"error": "Missing fields"}), 400
     
     try:
-        roster_id = db.add_shift_roster_entry(date_str, shift_type_id, personnel_id, status, g.username)
+        roster_id = db.add_shift_roster_entry(date_str, shift_type_id, personnel_id, status,
+                                              g.username, boss_id=current_boss_id())
         return jsonify({"id": roster_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -684,9 +774,9 @@ def analytics_sales_today():
     # Get all sales for today
     conn = boss_db.get_connection()
     sales = conn.execute("""
-        SELECT id, transaction_date, amount, sales_type, status, created_at
-        FROM sales
-        WHERE user_id = ? AND DATE(transaction_date) = ?
+        SELECT id, date AS transaction_date, amount, source AS sales_type, approval_status AS status, created_at
+        FROM event_revenue
+        WHERE boss_id = ? AND date = ? AND deleted_at IS NULL
         ORDER BY created_at DESC
     """, (boss_id, today)).fetchall()
     conn.close()
@@ -719,9 +809,9 @@ def analytics_revenue_vs_expenses():
     # Get sales (revenue)
     conn = boss_db.get_connection()
     sales = conn.execute("""
-        SELECT id, transaction_date, amount, sales_type, status, created_at
-        FROM sales
-        WHERE user_id = ? AND DATE(transaction_date) = ?
+        SELECT id, date AS transaction_date, amount, source AS sales_type, approval_status AS status, created_at
+        FROM event_revenue
+        WHERE boss_id = ? AND date = ? AND deleted_at IS NULL
         ORDER BY created_at DESC
     """, (boss_id, today)).fetchall()
     conn.close()
@@ -729,9 +819,9 @@ def analytics_revenue_vs_expenses():
     # Get expenses
     conn = boss_db.get_connection()
     expenses = conn.execute("""
-        SELECT id, transaction_date, amount, category, description, created_at
+        SELECT id, date AS transaction_date, amount, category, description, created_at
         FROM expenses
-        WHERE user_id = ? AND DATE(transaction_date) = ?
+        WHERE boss_id = ? AND date = ? AND deleted_at IS NULL
         ORDER BY created_at DESC
     """, (boss_id, today)).fetchall()
     conn.close()
@@ -775,9 +865,9 @@ def analytics_sales_by_type(sales_type):
     # Get sales for this type today
     conn = boss_db.get_connection()
     sales = conn.execute("""
-        SELECT id, transaction_date, amount, sales_type, status, created_at
-        FROM sales
-        WHERE user_id = ? AND DATE(transaction_date) = ? AND LOWER(sales_type) = ?
+        SELECT id, date AS transaction_date, amount, source AS sales_type, approval_status AS status, created_at
+        FROM event_revenue
+        WHERE boss_id = ? AND date = ? AND LOWER(source) = ? AND deleted_at IS NULL
         ORDER BY created_at DESC
     """, (boss_id, today, sales_type.lower())).fetchall()
     conn.close()
@@ -814,9 +904,9 @@ def analytics_expenses_by_category(category):
     # Get expenses for this category today
     conn = boss_db.get_connection()
     expenses = conn.execute("""
-        SELECT id, transaction_date, amount, category, description, created_at
+        SELECT id, date AS transaction_date, amount, category, description, created_at
         FROM expenses
-        WHERE user_id = ? AND DATE(transaction_date) = ? AND LOWER(category) = ?
+        WHERE boss_id = ? AND date = ? AND LOWER(category) = ? AND deleted_at IS NULL
         ORDER BY created_at DESC
     """, (boss_id, today, category_display.lower())).fetchall()
     conn.close()

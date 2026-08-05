@@ -19,8 +19,50 @@ ROLE_RANK = {r: i for i, r in enumerate(ROLES)}
 ROLE_LABELS = {"super_admin": "Super Admin", "admin": "Admin", "staff": "Staff", "viewer": "Viewer"}
 DEFAULT_ROLE = "staff"
 
+class _SafeConnection(sqlite3.Connection):
+    """A connection that releases its lock when a statement fails.
+
+    The functions below call conn.close() on the happy path but have no
+    try/finally, so an exception mid-query used to leave the write
+    transaction open and every later write in the process failed with
+    "database is locked". Rolling back and closing here, before re-raising,
+    makes that impossible without touching each call site.
+    """
+
+    def _abort(self):
+        try:
+            self.rollback()
+        except Exception:
+            pass
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def execute(self, *a, **kw):
+        try:
+            return super().execute(*a, **kw)
+        except Exception:
+            self._abort()
+            raise
+
+    def executemany(self, *a, **kw):
+        try:
+            return super().executemany(*a, **kw)
+        except Exception:
+            self._abort()
+            raise
+
+    def executescript(self, *a, **kw):
+        try:
+            return super().executescript(*a, **kw)
+        except Exception:
+            self._abort()
+            raise
+
+
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, factory=_SafeConnection)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -121,11 +163,11 @@ def delete_user(username: str) -> bool:
 
 # --- Events & Fights ---
 
-def insert_event(date_str: str, name: str, event_type: str, note: str = None, created_by: str = None) -> int:
+def insert_event(date_str: str, name: str, event_type: str, note: str = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO events (date, name, event_type, note, created_by) VALUES (?, ?, ?, ?, ?)",
-        (date_str, name, event_type, note, created_by),
+        "INSERT INTO events (date, name, event_type, note, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?)",
+        (date_str, name, event_type, note, created_by, boss_id),
     )
     conn.commit()
     event_id = cur.lastrowid
@@ -138,10 +180,13 @@ def get_event(event_id: int):
     conn.close()
     return dict(row) if row else None
 
-def list_events(date_from=None, date_to=None, limit=None, offset=0):
+def list_events(date_from=None, date_to=None, limit=None, offset=0, boss_id=None):
     conn = get_connection()
     where = [NOT_DELETED]
     params = []
+    if boss_id is not None:
+        where.append("boss_id = ?")
+        params.append(boss_id)
     if date_from:
         where.append("date >= ?")
         params.append(date_from)
@@ -168,11 +213,11 @@ def delete_event(event_id: int) -> bool:
 
 # Fights
 
-def insert_fight(event_id: int, fight_number: int, date_str: str, meron: str, wala: str, winner: str = None, plasada: float = None, pit_fee: float = None, notes: str = None, created_by: str = None) -> int:
+def insert_fight(event_id: int, fight_number: int, date_str: str, meron: str, wala: str, winner: str = None, plasada: float = None, pit_fee: float = None, notes: str = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO fights (event_id, fight_number, date, meron_owner, wala_owner, winner, plasada_amount, pit_fee, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (event_id, fight_number, date_str, meron, wala, winner, plasada, pit_fee, notes, created_by),
+        "INSERT INTO fights (event_id, fight_number, date, meron_owner, wala_owner, winner, plasada_amount, pit_fee, notes, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (event_id, fight_number, date_str, meron, wala, winner, plasada, pit_fee, notes, created_by, boss_id),
     )
     conn.commit()
     fight_id = cur.lastrowid
@@ -227,11 +272,11 @@ def delete_fight(fight_id: int) -> bool:
 
 # --- Event Revenue ---
 
-def insert_event_revenue(event_id: int, date_str: str, source: str, amount: float, description: str = None, created_by: str = None) -> int:
+def insert_event_revenue(event_id: int, date_str: str, source: str, amount: float, description: str = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO event_revenue (event_id, date, source, amount, description, created_by) VALUES (?, ?, ?, ?, ?, ?)",
-        (event_id, date_str, source, amount, description, created_by),
+        "INSERT INTO event_revenue (event_id, date, source, amount, description, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (event_id, date_str, source, amount, description, created_by, boss_id),
     )
     conn.commit()
     revenue_id = cur.lastrowid
@@ -263,21 +308,24 @@ def get_event_summary(event_id: int) -> dict:
 
 # --- Expenses ---
 
-def insert_expense(date_str: str, amount: float, description: str = None, category: str = None, note: str = None, created_by: str = None) -> int:
+def insert_expense(date_str: str, amount: float, description: str = None, category: str = None, note: str = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO expenses (date, amount, description, category, note, created_by) VALUES (?, ?, ?, ?, ?, ?)",
-        (date_str, amount, description, category, note, created_by),
+        "INSERT INTO expenses (date, amount, description, category, note, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (date_str, amount, description, category, note, created_by, boss_id),
     )
     conn.commit()
     expense_id = cur.lastrowid
     conn.close()
     return expense_id
 
-def list_expenses(date_from=None, date_to=None, category=None, limit=None, offset=0):
+def list_expenses(date_from=None, date_to=None, category=None, limit=None, offset=0, boss_id=None):
     conn = get_connection()
     where = [NOT_DELETED]
     params = []
+    if boss_id is not None:
+        where.append("boss_id = ?")
+        params.append(boss_id)
     if date_from:
         where.append("date >= ?")
         params.append(date_from)
@@ -307,11 +355,11 @@ def delete_expense(expense_id: int) -> bool:
 
 # --- Cash Remittances ---
 
-def insert_cash_remittance(date_str: str, amount: float, note: str = None, created_by: str = None) -> int:
+def insert_cash_remittance(date_str: str, amount: float, note: str = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO cash_remittances (date, amount, note, created_by) VALUES (?, ?, ?, ?)",
-        (date_str, amount, note, created_by),
+        "INSERT INTO cash_remittances (date, amount, note, created_by, boss_id) VALUES (?, ?, ?, ?, ?)",
+        (date_str, amount, note, created_by, boss_id),
     )
     conn.commit()
     remittance_id = cur.lastrowid
@@ -319,10 +367,13 @@ def insert_cash_remittance(date_str: str, amount: float, note: str = None, creat
     conn.close()
     return remittance_id
 
-def list_cash_remittances(date_from=None, date_to=None, limit=None, offset=0):
+def list_cash_remittances(date_from=None, date_to=None, limit=None, offset=0, boss_id=None):
     conn = get_connection()
     where = [NOT_DELETED]
     params = []
+    if boss_id is not None:
+        where.append("boss_id = ?")
+        params.append(boss_id)
     if date_from:
         where.append("date >= ?")
         params.append(date_from)
@@ -366,21 +417,24 @@ def set_setting(key: str, value):
 
 # --- Personnel ---
 
-def insert_personnel(name: str, position: str, contact: str = None, date_hired: str = None, status: str = "Active", rate: float = None, created_by: str = None) -> int:
+def insert_personnel(name: str, position: str, contact: str = None, date_hired: str = None, status: str = "Active", rate: float = None, created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO personnel (name, position, contact_number, date_hired, status, rate_per_shift, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (name, position, contact, date_hired, status, rate, created_by),
+        "INSERT INTO personnel (name, position, contact_number, date_hired, status, rate_per_shift, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (name, position, contact, date_hired, status, rate, created_by, boss_id),
     )
     conn.commit()
     personnel_id = cur.lastrowid
     conn.close()
     return personnel_id
 
-def list_personnel(status=None, position=None, limit=None, offset=0):
+def list_personnel(status=None, position=None, limit=None, offset=0, boss_id=None):
     conn = get_connection()
     where = [NOT_DELETED]
     params = []
+    if boss_id is not None:
+        where.append("boss_id = ?")
+        params.append(boss_id)
     if status:
         where.append("status = ?")
         params.append(status)
@@ -413,21 +467,23 @@ def list_shift_types():
     conn.close()
     return [dict(r) for r in rows]
 
-def get_shift_roster(date_str: str):
+def get_shift_roster(date_str: str, boss_id=None):
     conn = get_connection()
+    boss_clause = "AND sr.boss_id = ? " if boss_id is not None else ""
+    params = [date_str] + ([boss_id] if boss_id is not None else [])
     rows = conn.execute(
         f"SELECT sr.*, p.name AS personnel_name, st.name AS shift_name "
         f"FROM shift_roster sr "
         f"JOIN personnel p ON p.id = sr.personnel_id "
         f"JOIN shift_types st ON st.id = sr.shift_type_id "
-        f"WHERE sr.date = ? AND sr.{NOT_DELETED} "
+        f"WHERE sr.date = ? AND sr.{NOT_DELETED} {boss_clause}"
         f"ORDER BY sr.shift_type_id, p.name COLLATE NOCASE",
-        (date_str,),
+        params,
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
-def add_shift_roster_entry(date_str: str, shift_type_id: int, personnel_id: int, status: str, created_by: str) -> int:
+def add_shift_roster_entry(date_str: str, shift_type_id: int, personnel_id: int, status: str, created_by: str, boss_id: int = None) -> int:
     conn = get_connection()
     # Check for duplicate
     already = conn.execute(
@@ -439,8 +495,8 @@ def add_shift_roster_entry(date_str: str, shift_type_id: int, personnel_id: int,
         raise ValueError("Already assigned to this shift on this date.")
     
     cur = conn.execute(
-        "INSERT INTO shift_roster (date, shift_type_id, personnel_id, status, created_by) VALUES (?, ?, ?, ?, ?)",
-        (date_str, shift_type_id, personnel_id, status, created_by),
+        "INSERT INTO shift_roster (date, shift_type_id, personnel_id, status, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?)",
+        (date_str, shift_type_id, personnel_id, status, created_by, boss_id),
     )
     conn.commit()
     roster_id = cur.lastrowid

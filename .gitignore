@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 data/*.db
 .env
+
+# local scratch: one-off probe scripts and db backups
+_*.py
+data/*.db.bak-*
+data/_*.db
