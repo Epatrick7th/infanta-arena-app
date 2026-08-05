@@ -1,3 +1,4 @@
+import os
 from werkzeug.security import check_password_hash
 import sqlite3
 
@@ -9,7 +10,7 @@ conn.close()
 if row:
     print(f'User found: {row["username"]}')
     print(f'Stored hash: {row["password_hash"]}')
-    test_pwd = 'password123'
+    test_pwd = os.environ.get('TEST_PASSWORD', '')
     result = check_password_hash(row['password_hash'], test_pwd)
     print(f'Password check result: {result}')
 else:

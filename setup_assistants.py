@@ -4,26 +4,81 @@ Setup: Create Boss + Assistant pairs for each arena
 Boss: View/Approve only
 Assistant: Input/Data Entry
 """
+import os
+import secrets
 import sqlite3
+import string
 from werkzeug.security import generate_password_hash
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "data" / "sabong.db"
 
 # Boss & Assistant pairs
+# Passwords are NOT stored here: this file is public. Each assistant gets a
+# fresh random password, printed once. Set ASSISTANT_PASSWORD to choose one.
 ARENAS = [
-    {'boss': 'boss_infanta', 'boss_pwd': 'infanta123', 'asst': 'asst_infanta', 'asst_pwd': 'infanta_asst', 'arena': 'Infanta Arena'},
-    {'boss': 'boss_royal', 'boss_pwd': 'royal123', 'asst': 'asst_royal', 'asst_pwd': 'royal_asst', 'arena': 'Royal Arena'},
-    {'boss': 'boss_champion', 'boss_pwd': 'champion123', 'asst': 'asst_champion', 'asst_pwd': 'champion_asst', 'arena': 'Champion Arena'},
-    {'boss': 'boss_phoenix', 'boss_pwd': 'phoenix123', 'asst': 'asst_phoenix', 'asst_pwd': 'phoenix_asst', 'arena': 'Phoenix Arena'},
-    {'boss': 'boss_golden', 'boss_pwd': 'golden123', 'asst': 'asst_golden', 'asst_pwd': 'golden_asst', 'arena': 'Golden Arena'},
-    {'boss': 'boss_elite', 'boss_pwd': 'elite123', 'asst': 'asst_elite', 'asst_pwd': 'elite_asst', 'arena': 'Elite Arena'},
+    {'boss': 'boss_infanta', 'asst': 'asst_infanta', 'arena': 'Infanta Arena'},
+    {'boss': 'boss_royal', 'asst': 'asst_royal', 'arena': 'Royal Arena'},
+    {'boss': 'boss_champion', 'asst': 'asst_champion', 'arena': 'Champion Arena'},
+    {'boss': 'boss_phoenix', 'asst': 'asst_phoenix', 'arena': 'Phoenix Arena'},
+    {'boss': 'boss_golden', 'asst': 'asst_golden', 'arena': 'Golden Arena'},
+    {'boss': 'boss_elite', 'asst': 'asst_elite', 'arena': 'Elite Arena'},
 ]
+
+ALPHABET = string.ascii_letters + string.digits
+
+
+def make_password(env_var="ASSISTANT_PASSWORD", length=16):
+    """A password from the environment, else a fresh random one."""
+    supplied = os.environ.get(env_var)
+    if supplied:
+        return supplied
+    return "".join(secrets.choice(ALPHABET) for _ in range(length))
+
+def _abort_if_populated(conn, usernames):
+    """Refuse to re-create users who already own records.
+
+    Deleting and re-inserting a user gives them a new id, orphaning every
+    event/expense/remittance keyed to the old boss_id. To change a password
+    on a live database use rotate_password.py, which updates it in place.
+    """
+    import os
+    if os.environ.get("SETUP_FORCE", "").lower() in ("1", "true", "yes"):
+        return
+    blocked = []
+    for name in usernames:
+        row = conn.execute(
+            "SELECT id FROM users WHERE username = ?", (name,)).fetchone()
+        if not row:
+            continue
+        owned = 0
+        for table in ("events", "expenses", "cash_remittances", "fights"):
+            try:
+                owned += conn.execute(
+                    f"SELECT COUNT(*) FROM {table} WHERE boss_id = ?",
+                    (row[0],)).fetchone()[0]
+            except Exception:
+                pass
+        if owned:
+            blocked.append((name, owned))
+    if blocked:
+        print("\nREFUSING TO RUN: these accounts already own records.\n")
+        for name, n in blocked:
+            print(f"  {name:20} {n} records would be orphaned")
+        print("\nRe-creating them assigns new ids and strands that data.")
+        print("To change a password on a live database, use:")
+        print("    python rotate_password.py <username>")
+        print("\nIf you really mean to wipe and re-create, set SETUP_FORCE=1.\n")
+        raise SystemExit(1)
+
 
 def setup():
     """Create assistant accounts for each arena."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # assistants own no rows themselves, so check the boss of the same arena:
+    # re-creating an assistant is only safe while that arena has no data
+    _abort_if_populated(conn, [a['boss'] for a in ARENAS])
     
     try:
         print("\nCreating Boss + Assistant pairs for each arena...\n")
@@ -32,7 +87,7 @@ def setup():
         for arena_config in ARENAS:
             boss_user = arena_config['boss']
             asst_user = arena_config['asst']
-            asst_pwd = arena_config['asst_pwd']
+            asst_pwd = make_password()
             arena = arena_config['arena']
             
             # Delete if exists
@@ -48,8 +103,9 @@ def setup():
             asst_id = cursor.lastrowid
             
             print(f"Arena: {arena}")
-            print(f"  BOSS       | Username: {boss_user:20} | Password: {arena_config['boss_pwd']}")
+            print(f"  BOSS       | Username: {boss_user:20} | (unchanged)")
             print(f"  ASSISTANT  | Username: {asst_user:20} | Password: {asst_pwd}")
+            print("  ^ save this now; it is not stored and cannot be recovered")
             print()
         
         conn.commit()

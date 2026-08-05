@@ -26,9 +26,24 @@ from datetime import date
 REAL_DB = "data/sabong.db"
 TMP_DB = "data/_test_security.db"
 
-BOSS = ("boss_infanta", "infanta123")
-BOSS2 = ("boss_royal", "royal123")
-ASSISTANT = ("asst_infanta", "infanta_asst")
+# Credentials come from the environment, with the throwaway development
+# values as fallbacks so the suite runs out of the box on a local database.
+# These are not secrets: setup_bosses.py now issues a random password per
+# account, so a real deployment never has a known one. Point the suite at a
+# different database with:
+#   set ARENA_TEST_BOSS_PASSWORD=...
+DEV_FALLBACK = {
+    "boss": "infanta123",
+    "boss2": "royal123",
+    "assistant": "infanta_asst",
+}
+BOSS = (os.environ.get("ARENA_TEST_BOSS_USER", "boss_infanta"),
+        os.environ.get("ARENA_TEST_BOSS_PASSWORD", DEV_FALLBACK["boss"]))
+BOSS2 = (os.environ.get("ARENA_TEST_BOSS2_USER", "boss_royal"),
+         os.environ.get("ARENA_TEST_BOSS2_PASSWORD", DEV_FALLBACK["boss2"]))
+ASSISTANT = (os.environ.get("ARENA_TEST_ASSISTANT_USER", "asst_infanta"),
+             os.environ.get("ARENA_TEST_ASSISTANT_PASSWORD",
+                            DEV_FALLBACK["assistant"]))
 
 failures = []
 checks = 0
@@ -326,6 +341,50 @@ for name in dir(D):
     if "boss_id" not in params:
         read_gaps.append(name)
 check(not read_gaps, "every book-level read can filter by boss", str(read_gaps))
+
+# No committed credentials: this repo is public, so anything written into a
+# tracked file is world-readable. Two live passwords (a boss and the
+# super_admin) were found this way.
+#
+# The suite's own DEV_FALLBACK block is the single allowed exception: those
+# are the throwaway values on a local dev database, and setup_bosses.py now
+# issues random passwords so production never has a known one. The exception
+# is spelled out here rather than by exempting a whole file, because an
+# exempt file is exactly where the next secret would land.
+import glob as _glob
+
+CRED_PATTERN = _re.compile(
+    r"""['"]password['"]\s*:\s*['"][^'"]{3,}['"]"""      # {'password': 'secret'}
+    r"""|_pwd['"]?\s*[:=]\s*['"][^'"]{3,}['"]"""         # asst_pwd = 'secret'
+    r"""|password\s*=\s*['"][^'"]{3,}['"]""",            # password = 'secret'
+    _re.IGNORECASE)
+
+ALLOWED_LINES = _re.compile(
+    r'DEV_FALLBACK|os\.environ|getenv|request\.form|\.get\('
+    r'|CRED_PATTERN|_re\.compile|# .*secret')  # the guard's own definition
+
+cred_hits = []
+for pyfile in _glob.glob("*.py"):
+    # scratch probes are gitignored and never published; no tracked file is
+    # exempt, including this one
+    if pyfile.startswith("_"):
+        continue
+    in_pattern = False
+    for lineno, line in enumerate(
+            open(pyfile, encoding="utf-8", errors="replace"), 1):
+        # skip the regex literal that defines this very check
+        if "CRED_PATTERN = " in line:
+            in_pattern = True
+        if in_pattern:
+            if line.rstrip().endswith(")"):
+                in_pattern = False
+            continue
+        if ALLOWED_LINES.search(line):
+            continue
+        if CRED_PATTERN.search(line):
+            cred_hits.append(f"{pyfile}:{lineno}")
+check(not cred_hits, "no hardcoded password literals in committed scripts",
+      "; ".join(cred_hits[:4]))
 
 
 # =========================================================== 9. no 5xx =====

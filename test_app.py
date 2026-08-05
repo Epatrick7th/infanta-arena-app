@@ -2,6 +2,7 @@
 """
 Comprehensive app functionality test
 """
+import os
 import requests
 import json
 import time
@@ -18,7 +19,7 @@ print("\n[TEST 1] Login")
 try:
     resp = session.post(f"{BASE_URL}/login", data={
         'username': 'patrick',
-        'password': 'password123'
+        'password': os.environ.get('TEST_PASSWORD', '')
     }, allow_redirects=True)
     if "Welcome" in resp.text or "dashboard" in resp.url:
         print("✓ Login successful")

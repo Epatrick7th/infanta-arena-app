@@ -1,15 +1,25 @@
-from werkzeug.security import generate_password_hash
-import sqlite3
+#!/usr/bin/env python3
+"""Deprecated: use rotate_password.py instead.
 
-conn = sqlite3.connect('data/sabong.db')
-# Delete old user
-conn.execute("DELETE FROM users WHERE username = 'patrick'")
-# Create new with pbkdf2
-new_hash = generate_password_hash('password123', method='pbkdf2')
-conn.execute(
-    "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
-    ('patrick', new_hash, 'super_admin')
-)
-conn.commit()
-conn.close()
-print("User recreated with pbkdf2 hash")
+This script used to DELETE the user and re-INSERT them, which assigns a new
+id and orphans every event, expense and remittance keyed to their old
+boss_id. Measured on a copy of the real database: doing that to boss_infanta
+left them with 0 of their 31 events.
+
+It now delegates to the safe in-place rotation so anyone following an old
+note or shell history does not lose a partner's books.
+"""
+import os
+import sys
+
+print(__doc__)
+
+username = os.environ.get("FIX_USER", "patrick")
+password = os.environ.get("NEW_PASSWORD")
+
+cmd = [sys.executable, "rotate_password.py", username]
+if password:
+    cmd += ["--password", password]
+
+print(f"Delegating to: {' '.join(cmd)}\n")
+os.execv(sys.executable, cmd)

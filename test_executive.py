@@ -2,7 +2,12 @@
 """
 Comprehensive test suite for Infanta Arena Executive Dashboard
 """
+import os
 import sqlite3
+
+# credentials come from the environment; none are stored in this file
+BOSS_USER = os.environ.get('ARENA_TEST_BOSS_USER', 'boss_infanta')
+BOSS_PASSWORD = os.environ.get('ARENA_TEST_BOSS_PASSWORD', '')
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "data" / "sabong.db"
@@ -123,7 +128,7 @@ def test_app_routes():
         
         # Try login
         resp = requests.post('http://127.0.0.1:5001/login', 
-                            data={'username': 'boss_infanta', 'password': 'infanta123'},
+                            data={'username': BOSS_USER, 'password': BOSS_PASSWORD},
                             allow_redirects=True)
         
         if resp.status_code == 200:
@@ -143,7 +148,7 @@ def test_app_routes():
         print("       To test manually, open browser and visit:")
         print("       http://127.0.0.1:5001/login")
         print("       Username: boss_infanta")
-        print("       Password: infanta123")
+        print("       Password: (set ARENA_TEST_BOSS_PASSWORD)")
         return None
 
 if __name__ == '__main__':
@@ -165,8 +170,8 @@ if __name__ == '__main__':
     print("\n" + "="*70)
     print("NEXT STEPS: Open browser and test:")
     print("  1. http://127.0.0.1:5001/login")
-    print("  2. Login as boss_infanta / infanta123")
+    print("  2. Login as boss_infanta / (your password)")
     print("  3. Verify Executive Dashboard displays")
-    print("  4. Logout and login as boss_royal / royal123")
+    print("  4. Logout and login as boss_royal / (their password)")
     print("  5. Verify DIFFERENT dashboard (data isolation)")
     print("="*70 + "\n")

@@ -2,6 +2,7 @@
 """
 Test the analytics page by fetching it and checking for issues
 """
+import os
 import sys
 sys.path.insert(0, 'C:\\Users\\Patrick\\Downloads\\sabong-arena-app')
 
@@ -16,7 +17,14 @@ client = app_module.app.test_client()
 
 # First login to set session
 print("1. Attempting login...")
-response = client.post('/login', data={'username': 'boss_infanta', 'password': 'boss123'}, follow_redirects=True)
+# Credentials come from the environment; nothing secret lives in this file.
+TEST_USER = os.environ.get('TEST_USER', 'boss_infanta')
+TEST_PASSWORD = os.environ.get('TEST_PASSWORD')
+if not TEST_PASSWORD:
+    print('SKIP: set TEST_PASSWORD (and optionally TEST_USER) to run this test.')
+    raise SystemExit(0)
+
+response = client.post('/login', data={'username': TEST_USER, 'password': TEST_PASSWORD}, follow_redirects=True)
 print(f"   Login response: {response.status_code}")
 
 # Now try to access analytics

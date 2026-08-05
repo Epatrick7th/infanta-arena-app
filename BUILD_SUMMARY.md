@@ -213,11 +213,47 @@ what kept the defects invisible:
 7. **No CSRF protection.** The claim above was aspirational; a forged
    cross-site POST was accepted and wrote a real row.
 
+### Credentials
+
+The setup scripts no longer contain passwords. `setup_bosses.py` and
+`setup_assistants.py` issue a strong random password per account and print it
+once, or accept one via `BOSS_PASSWORD` / `ASSISTANT_PASSWORD`. Nothing
+secret is written to a tracked file, and `test_security.py` fails the build
+if a password literal reappears.
+
+**The previously committed passwords are still live in the database.** They
+were published to a public repo, so treat them as compromised:
+
+| Account | Was |
+|---|---|
+| the six `boss_*` accounts | `<arena>123`, e.g. `infanta123` |
+| the six `asst_*` accounts | `<arena>_asst` |
+| `test_boss` | `test123` |
+| `patrick` (**super_admin**) | `password123` |
+
+To rotate safely, use `rotate_password.py`:
+
+```bash
+python rotate_password.py boss_infanta     # one account, random password
+python rotate_password.py --all            # every account
+```
+
+It updates `password_hash` **in place**, so the user's id, and therefore
+every event, expense and remittance keyed to their `boss_id`, stays attached.
+The new password is printed once and stored nowhere. Give each partner theirs
+out of band.
+
+> **Do not rotate by re-running `setup_bosses.py` / `setup_assistants.py`.**
+> Those scripts `DELETE` and re-`INSERT` the user, which assigns a new id and
+> **orphans all of that boss's data**. Measured on a copy: `boss_infanta`
+> went from 31 visible events to 0, with the 31 stranded on the old id. The
+> same flaw was in `fix_user.py`. Use those scripts only to populate a fresh
+> database.
+
 ### Still open
 
-- **Credentials are committed in plaintext** in `setup_bosses.py` and
-  `setup_assistants.py`, and follow a guessable pattern (`infanta123`,
-  `royal123`). Rotate before any real deployment.
+- **Rotate the passwords listed above.** They are public. `patrick` is the
+  super_admin, so that one first.
 - Set `SECRET_KEY` in the environment, or sessions reset on every restart.
 - Set `COOKIE_SECURE=1` in production so the session cookie is HTTPS-only.
 
