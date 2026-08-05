@@ -10,7 +10,8 @@ Covers the defects found on 2026-08-05, so they cannot come back:
   4. write ownership       new rows are stamped with the creating boss
   5. assistant scoping     an assistant resolves to their arena's boss
   6. JSON coercion         the write APIs accept JSON numbers and strings
-  7. no 5xx                every GET page loads for boss and assistant
+  7. CSRF                  cross-site writes are refused, same-site are not
+  8. no 5xx                every GET page loads for boss and assistant
 
 Everything that writes runs against a throwaway copy of the database, so the
 real data is never touched.
@@ -236,8 +237,49 @@ with app.test_client() as c:
     check(r.status_code == 400, "fight rejects a null fight_number", f"-> {r.status_code}")
 
 
-# ========================================================== 7. no 5xx ======
-section("7. Every page loads without a server error")
+# ============================================================ 7. CSRF ======
+section("7. Cross-site writes are rejected, same-site writes are not")
+with app.test_client() as c:
+    login(c, BOSS)
+    form = {"date": date.today().isoformat(), "amount": "10",
+            "description": "csrf case", "category": "supplies"}
+
+    def expense_count():
+        return con.execute("select count(*) from expenses").fetchone()[0]
+
+    before = expense_count()
+    c.post("/expenses/new", data=dict(form, description="same-origin"),
+           headers={"Origin": "http://localhost",
+                    "Referer": "http://localhost/expenses/new"},
+           base_url="http://localhost")
+    check(expense_count() == before + 1, "same-origin browser POST is accepted")
+
+    before = expense_count()
+    c.post("/expenses/new", data=dict(form, description="no-origin"))
+    check(expense_count() == before + 1, "client with no Origin/Referer is accepted")
+
+    before = expense_count()
+    r = c.post("/expenses/new", data=dict(form, description="forged"),
+               headers={"Origin": "https://evil.example"})
+    check(r.status_code == 403 and expense_count() == before,
+          "cross-site form POST is rejected", f"-> {r.status_code}")
+
+    ev = con.execute("select id from events limit 1").fetchone()["id"]
+    r = c.post(f"/api/events/{ev}/revenue", json={"source": "gate", "amount": 1},
+               headers={"Origin": "https://evil.example"})
+    check(r.status_code == 403, "cross-site JSON POST is rejected", f"-> {r.status_code}")
+
+    r = c.get("/dashboard", headers={"Origin": "https://evil.example"})
+    check(r.status_code == 200, "GET is unaffected by the origin check",
+          f"-> {r.status_code}")
+
+    check(app.config.get("SESSION_COOKIE_SAMESITE") == "Lax",
+          "session cookie is SameSite=Lax",
+          str(app.config.get("SESSION_COOKIE_SAMESITE")))
+
+
+# ========================================================== 8. no 5xx ======
+section("8. Every page loads without a server error")
 GETS = [r for r in app.url_map.iter_rules()
         if "GET" in r.methods and r.endpoint not in ("static", "logout")]
 for creds, label in ((BOSS, "boss"), (ASSISTANT, "assistant")):

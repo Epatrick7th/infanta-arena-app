@@ -171,13 +171,55 @@ python app.py
 
 ---
 
-## Security Features
+## Security
 
-✅ Password hashing (pbkdf2, not plaintext)
-✅ Boss data isolation (can't see other bosses' data)
-✅ Role-based access control (boss vs assistant vs admin)
-✅ SQL injection prevention (parameterized queries)
-✅ CSRF protection via Flask session
+Each item below is covered by a check in `test_security.py` (32 checks).
+Run it before shipping any change:
+
+```bash
+python test_security.py
+```
+
+| Control | Verified by |
+|---|---|
+| Password hashing (pbkdf2) | login flow |
+| Boss data isolation (lists) | section 2: a boss sees only their own rows |
+| Boss data isolation (by id) | section 3: IDOR on events, fights, approvals |
+| Correct ownership on writes | section 4: every new row records its creator |
+| Assistant scoping | section 5: resolves to their arena's boss |
+| Role-based access control | section 1: anonymous access refused everywhere |
+| SQL injection prevention | parameterised queries throughout |
+| CSRF | section 7: cross-site writes rejected, SameSite=Lax cookie |
+
+### History: these were broken
+
+Audited 2026-08-05 and fixed in one commit. Recorded here because the
+previous version of this file asserted all of it already worked, which is
+what kept the defects invisible:
+
+1. **Every boss could read every other boss's books.** The list queries had
+   no `boss_id` filter. `/api/events` returned all 186 events to a boss who
+   owns 31; same for 744 expenses and 24 remittances.
+2. **IDOR.** Any boss could open another's event and edit or delete their
+   fights by guessing an id.
+3. **New rows got the wrong owner.** No insert set `boss_id`, so everything
+   defaulted to boss 1.
+4. **Four write APIs always returned 500.** `data.get(key, type=int)` on the
+   dict from `request.get_json()`; `dict.get` has no `type` kwarg.
+5. **All five analytics drilldowns always returned 500.** They queried a
+   `sales` table that does not exist.
+6. **Any failed write locked the database** until restart, because `db.py`
+   closed connections without `try/finally`.
+7. **No CSRF protection.** The claim above was aspirational; a forged
+   cross-site POST was accepted and wrote a real row.
+
+### Still open
+
+- **Credentials are committed in plaintext** in `setup_bosses.py` and
+  `setup_assistants.py`, and follow a guessable pattern (`infanta123`,
+  `royal123`). Rotate before any real deployment.
+- Set `SECRET_KEY` in the environment, or sessions reset on every restart.
+- Set `COOKIE_SECURE=1` in production so the session cookie is HTTPS-only.
 
 ---
 
@@ -311,7 +353,10 @@ Expenses unusually high on one day → Analytics → Trends tab → Spots the hi
 
 ## Final Status
 
-**Status:** ✅ COMPLETE & PRODUCTION READY
+**Status:** Feature-complete; security defects found on 2026-08-05 are
+fixed and covered by `test_security.py`. See "Still open" under Security for
+what must happen before a real deployment (credential rotation, `SECRET_KEY`,
+`COOKIE_SECURE`).
 
 **What's Working:**
 - Login & authentication
@@ -325,9 +370,10 @@ Expenses unusually high on one day → Analytics → Trends tab → Spots the hi
 
 **Ready to:**
 - ✅ Show to stakeholders/owners
-- ✅ Deploy to production
 - ✅ Add more data
 - ✅ Extend with new features
+- ⚠️ Deploy to production — only after rotating the committed passwords and
+  setting `SECRET_KEY` and `COOKIE_SECURE`
 
 ---
 

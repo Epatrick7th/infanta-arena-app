@@ -11,6 +11,47 @@ import live_fight
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
+# --- Session cookie hardening ---
+# SameSite=Lax stops the browser attaching this cookie to cross-site POSTs,
+# which is what actually prevents CSRF here. 'Lax' (not 'Strict') so that
+# arriving via an ordinary link keeps the user logged in.
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_HTTPONLY=True,
+    # enable in production, where the app is served over HTTPS
+    SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes"),
+)
+
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+@app.before_request
+def block_cross_site_writes():
+    """Reject state-changing requests that a *different* site initiated.
+
+    Backs up SameSite for browsers that ignore it, and covers the JSON API.
+    A missing Origin/Referer is allowed: curl, the test client and mobile
+    apps send neither, while browsers always send Origin on a cross-site
+    POST, so the forgery path is still closed.
+    """
+    if request.method in SAFE_METHODS:
+        return None
+
+    origin = request.headers.get("Origin")
+    if not origin:
+        referer = request.headers.get("Referer")
+        if not referer:
+            return None  # non-browser client
+        origin = referer
+
+    from urllib.parse import urlparse
+    incoming = urlparse(origin).netloc
+    expected = urlparse(request.host_url).netloc
+    if incoming and incoming != expected:
+        return jsonify({"error": "Cross-site request rejected"}), 403
+    return None
+
+
 ROLE_LABELS = db.ROLE_LABELS
 
 # --- JSON payload coercion ---------------------------------------------
