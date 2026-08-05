@@ -11,7 +11,8 @@ Covers the defects found on 2026-08-05, so they cannot come back:
   5. assistant scoping     an assistant resolves to their arena's boss
   6. JSON coercion         the write APIs accept JSON numbers and strings
   7. CSRF                  cross-site writes are refused, same-site are not
-  8. no 5xx                every GET page loads for boss and assistant
+  8. coverage audit        no unowned insert or unfiltered read remains
+  9. no 5xx                every GET page loads for boss and assistant
 
 Everything that writes runs against a throwaway copy of the database, so the
 real data is never touched.
@@ -278,8 +279,57 @@ with app.test_client() as c:
           str(app.config.get("SESSION_COOKIE_SAMESITE")))
 
 
-# ========================================================== 8. no 5xx ======
-section("8. Every page loads without a server error")
+# ================================================== 8. coverage audit ======
+section("8. No unowned inserts or unfiltered reads remain")
+import inspect
+import re as _re
+
+owned_tables = set()
+for (_t,) in con.execute(
+        "select name from sqlite_master where type='table' and name not like 'sqlite_%'"):
+    if "boss_id" in {r[1] for r in con.execute(f"PRAGMA table_info({_t})")}:
+        owned_tables.add(_t)
+
+# users.boss_id links an assistant to a boss; it is not row ownership
+BY_DESIGN = {"users"}
+db_src = open("db.py", encoding="utf-8").read()
+
+insert_gaps = []
+for m in _re.finditer(r'"INSERT INTO (\w+) \(([^)]*)\)', db_src):
+    table, cols = m.group(1), m.group(2)
+    if table in owned_tables and table not in BY_DESIGN and "boss_id" not in cols:
+        insert_gaps.append(table)
+check(not insert_gaps, "every insert into a boss-owned table records boss_id",
+      str(insert_gaps))
+
+# reads excused below are by-id or parent-scoped; section 3 proves their
+# routes refuse cross-boss access
+BY_ID_OK = {"get_event", "get_fight", "get_event_summary",
+            "list_fights_for_event", "list_event_revenue"}
+USERS_OK = {"verify_user", "list_users", "get_user", "delete_user",
+            "update_user_role", "create_user"}
+read_gaps = []
+for name in dir(D):
+    if not (name.startswith("list_") or name.startswith("get_")) or name == "get_connection":
+        continue
+    fn = getattr(D, name)
+    if not callable(fn):
+        continue
+    try:
+        body = inspect.getsource(fn)
+        params = inspect.signature(fn).parameters
+    except (TypeError, ValueError, OSError):
+        continue
+    hit = {t for t in owned_tables if _re.search(rf"\bFROM {t}\b", body)}
+    if not hit or name in BY_ID_OK or name in USERS_OK or hit == {"users"}:
+        continue
+    if "boss_id" not in params:
+        read_gaps.append(name)
+check(not read_gaps, "every book-level read can filter by boss", str(read_gaps))
+
+
+# =========================================================== 9. no 5xx =====
+section("9. Every page loads without a server error")
 GETS = [r for r in app.url_map.iter_rules()
         if "GET" in r.methods and r.endpoint not in ("static", "logout")]
 for creds, label in ((BOSS, "boss"), (ASSISTANT, "assistant")):

@@ -534,21 +534,24 @@ def set_penalty_defaults(late_amount: float, absence_amount: float):
     set_setting("personnel_late_penalty_default", late_amount)
     set_setting("personnel_absence_penalty_default", absence_amount)
 
-def insert_personnel_penalty(personnel_id: int, date_str: str, type_: str, amount: float, description: str = None, category: str = "penalty", created_by: str = None) -> int:
+def insert_personnel_penalty(personnel_id: int, date_str: str, type_: str, amount: float, description: str = None, category: str = "penalty", created_by: str = None, boss_id: int = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO personnel_penalties (personnel_id, date, type, category, description, amount, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (personnel_id, date_str, type_, category, description, amount, created_by),
+        "INSERT INTO personnel_penalties (personnel_id, date, type, category, description, amount, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (personnel_id, date_str, type_, category, description, amount, created_by, boss_id),
     )
     conn.commit()
     penalty_id = cur.lastrowid
     conn.close()
     return penalty_id
 
-def list_personnel_penalties(personnel_id: int, date_from=None, date_to=None, limit=None, offset=0):
+def list_personnel_penalties(personnel_id: int, date_from=None, date_to=None, limit=None, offset=0, boss_id=None):
     conn = get_connection()
     where = [NOT_DELETED, "personnel_id = ?"]
     params = [personnel_id]
+    if boss_id is not None:
+        where.append("boss_id = ?")
+        params.append(boss_id)
     if date_from:
         where.append("date >= ?")
         params.append(date_from)
