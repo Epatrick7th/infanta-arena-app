@@ -15,3 +15,7 @@ arena-server.log
 # which is how one got committed
 _*.txt
 _*.html
+
+# scratch capture folders from design work
+_ref/
+_shots/

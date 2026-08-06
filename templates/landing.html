@@ -1,0 +1,646 @@
+﻿{# Landing page for Infanta Sports Arena.
+
+   Modelled on eladiodieste.com: near-black ground, one typeface pushed to
+   extremes, full-bleed photography, a long quiet scroll with a vertical
+   timeline spine. Colours are sampled from Patrick's own two images rather
+   than guessed, so the red is the building's real red (#92201D) and the
+   gold is the logo's real gold (#FAD259).
+
+   Only two source photographs exist so far, so the page is deliberately
+   built to use few images well: large, full-bleed, with a lot of black
+   around them. When more arena photography arrives the picture slots take
+   it without any layout change.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infanta Sports Arena</title>
+<meta name="description" content="Infanta Sports Arena. A cockpit built for the province, in Infanta. Established 2026.">
+
+<meta property="og:title" content="Infanta Sports Arena">
+<meta property="og:description" content="A cockpit built for the province. Established 2026.">
+<meta property="og:image" content="{{ url_for('static', filename='img/arena-wide.webp', _external=True) }}">
+<meta property="og:type" content="website">
+
+<link rel="icon" href="{{ url_for('static', filename='img/logo-sm.webp') }}">
+<link rel="preload" as="image" href="{{ url_for('static', filename='img/hero-wide.webp') }}">
+
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root{
+  /* sampled from logo sabong.jpg and sab.jpg */
+  --ink:#080707;          /* near-black, warmed very slightly */
+  --paper:#F1ECE8;        /* warm off-white, as the reference uses */
+  --red:#92201D;          /* the building's red */
+  --red-deep:#5E0507;     /* the logo's crest red */
+  --gold:#FAD259;         /* the logo's gold */
+  --gold-dim:#E3971A;
+  --field:#585D33;        /* the rice fields behind the arena */
+  --rule:rgba(241,236,232,.18);
+
+  --gutter:clamp(18px, 4.5vw, 72px);
+  --stack:clamp(80px, 14vh, 190px);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+
+html{
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+}
+
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:"Helvetica Neue",Helvetica,Arial,"Segoe UI",system-ui,sans-serif;
+  font-size:clamp(15px,1.05vw,17.5px);
+  line-height:1.45;
+  letter-spacing:-.01em;
+  overflow-x:hidden;
+  font-kerning:normal;
+  -webkit-font-smoothing:antialiased;
+}
+
+img{display:block;max-width:100%;height:auto}
+a{color:inherit;text-decoration:none}
+
+/* ------------------------------------------------------------ type scale */
+/* the reference runs 288px display against 17px body: extreme contrast,
+   tight tracking, light weight. */
+.display{
+  font-size:clamp(56px,14.5vw,232px);
+  line-height:.82;
+  font-weight:400;
+  letter-spacing:-.045em;
+  margin:0;
+}
+.h2{
+  font-size:clamp(38px,8.6vw,124px);
+  line-height:.9;
+  font-weight:400;
+  letter-spacing:-.05em;
+  margin:0;
+}
+.h3{
+  font-size:clamp(22px,2.5vw,33px);
+  line-height:1.08;
+  font-weight:500;
+  letter-spacing:-.04em;
+  margin:0;
+}
+.lede{
+  font-size:clamp(19px,2.4vw,53px);
+  line-height:1.16;
+  font-weight:400;
+  letter-spacing:-.035em;
+  margin:0;
+}
+.small{
+  font-size:clamp(12.5px,.95vw,14px);
+  letter-spacing:.01em;
+  line-height:1.4;
+}
+.caption{
+  font-size:clamp(11px,.85vw,12.5px);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:rgba(241,236,232,.5);
+}
+
+/* ------------------------------------------------------------------- nav */
+.nav{
+  position:fixed;
+  inset:0 0 auto 0;
+  z-index:60;
+  display:flex;
+  align-items:center;
+  gap:clamp(14px,4vw,60px);
+  padding:14px var(--gutter);
+  border-bottom:1px solid var(--rule);
+  background:linear-gradient(to bottom,rgba(8,7,7,.72),rgba(8,7,7,0));
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+  font-size:clamp(12px,.95vw,14px);
+  letter-spacing:.005em;
+  mix-blend-mode:normal;
+}
+.nav .dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--gold);
+  flex:none;
+}
+.nav a{opacity:.82;transition:opacity .25s}
+.nav a:hover{opacity:1}
+.nav .spacer{margin-left:auto}
+
+/* ----------------------------------------------------------------- hero */
+.hero{
+  position:relative;
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:0 var(--gutter) clamp(18px,4vh,40px);
+  overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  z-index:0;
+}
+.hero-bg img{
+  width:100%;height:100%;
+  object-fit:cover;
+  /* pull the frame up so the building's own signage sits in the upper half
+     and the lower band stays clear for the wordmark */
+  object-position:center 22%;
+}
+/* the sky in the source photo is bright; darken toward the type so the
+   name stays legible without hiding the building */
+.hero-bg::after{
+  content:"";
+  position:absolute;inset:0;
+  background:
+    linear-gradient(to bottom,rgba(8,7,7,.60) 0%,rgba(8,7,7,.18) 26%,rgba(8,7,7,.55) 62%,rgba(8,7,7,.94) 100%);
+}
+.hero-top,.hero-bottom{position:relative;z-index:2}
+.hero-top{padding-top:clamp(70px,11vh,120px)}
+.hero-bottom{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:24px;
+  flex-wrap:wrap;
+}
+.hero .display{
+  text-shadow:0 2px 60px rgba(0,0,0,.55);
+}
+/* The building carries its own painted sign across the middle of the frame,
+   so a full-width wordmark printed the name twice and the two competed.
+   Setting both lines on one baseline band at the foot of the hero keeps the
+   type clear of the signage at every viewport, and reads as a single mark
+   rather than two. */
+.hero-top .display{
+  font-size:clamp(13px,1.5vw,18px);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  line-height:1;
+  opacity:.85;
+}
+.hero-wordmark{
+  display:block;
+  font-size:clamp(44px,10.2vw,164px);
+  line-height:.86;
+  letter-spacing:-.045em;
+  margin:0;
+  text-shadow:0 2px 70px rgba(0,0,0,.6);
+}
+.hero .line2{
+  text-align:right;
+  display:block;
+}
+.hero-meta{
+  display:flex;
+  align-items:baseline;
+  gap:clamp(12px,3vw,40px);
+  width:100%;
+  border-top:1px solid var(--rule);
+  padding-top:12px;
+  margin-top:clamp(20px,5vh,54px);
+}
+.hero-meta .spacer{margin-left:auto}
+
+.scrollcue{
+  position:absolute;
+  left:50%;
+  bottom:clamp(14px,3vh,26px);
+  transform:translateX(-50%);
+  z-index:3;
+  width:1px;height:clamp(30px,6vh,54px);
+  background:linear-gradient(to bottom,rgba(241,236,232,0),var(--gold));
+  animation:cue 2.4s ease-in-out infinite;
+}
+@keyframes cue{
+  0%,100%{opacity:.25;transform:translateX(-50%) scaleY(.6)}
+  50%    {opacity:1;  transform:translateX(-50%) scaleY(1)}
+}
+@media (prefers-reduced-motion:reduce){.scrollcue{animation:none;opacity:.6}}
+
+/* -------------------------------------------------------------- sections */
+section{position:relative}
+.pad{padding:var(--stack) var(--gutter)}
+.rule{height:1px;background:var(--rule);margin:0 var(--gutter)}
+
+/* the statement block: huge type, a small paragraph set against it, exactly
+   the reference's move */
+.statement{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:clamp(30px,7vh,90px);
+}
+.statement .note{
+  max-width:34ch;
+  margin-left:auto;
+  color:rgba(241,236,232,.72);
+}
+
+.quote{
+  font-size:clamp(24px,4.2vw,74px);
+  line-height:1.06;
+  letter-spacing:-.04em;
+  font-weight:400;
+  margin:0;
+  max-width:20ch;
+}
+.quote .em{color:var(--gold)}
+
+/* ----------------------------------------------------------------- media */
+.bleed{width:100%;overflow:hidden;background:#000}
+.bleed img{width:100%;object-fit:cover}
+.bleed.tall img{height:clamp(280px,64vh,760px)}
+.bleed.band img{height:clamp(200px,46vh,520px)}
+.bleed.thin img{height:clamp(90px,17vh,190px)}
+
+figure{margin:0}
+figcaption{margin-top:10px}
+
+/* --------------------------------------------------------------- timeline */
+/* the reference's spine: a hairline down the middle with photos and years
+   hung off it asymmetrically */
+.timeline{
+  position:relative;
+  padding:var(--stack) var(--gutter);
+}
+.timeline::before{
+  content:"";
+  position:absolute;
+  top:0;bottom:0;left:50%;
+  width:1px;
+  background:var(--rule);
+}
+.tl-row{
+  position:relative;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:clamp(20px,5vw,90px);
+  align-items:center;
+  margin-bottom:clamp(60px,13vh,170px);
+}
+.tl-row:last-child{margin-bottom:0}
+.tl-year{
+  font-size:clamp(30px,4.4vw,62px);
+  letter-spacing:-.04em;
+  line-height:1;
+  color:var(--paper);
+}
+.tl-row .body{max-width:38ch;color:rgba(241,236,232,.72);margin-top:14px}
+.tl-node{
+  position:absolute;
+  left:50%;top:50%;
+  width:9px;height:9px;
+  margin:-4.5px 0 0 -4.5px;
+  background:var(--gold);
+  border-radius:50%;
+  z-index:2;
+}
+.tl-row.flip .a{order:2}
+.tl-row.flip .b{order:1;text-align:right}
+/* the text column must align as a block, not just inherit text-align, or
+   the paragraph floats away from the heading it belongs to */
+.tl-row.flip .b .body{margin-left:auto;margin-right:0}
+.tl-row .b .body{margin-right:auto}
+/* rows were stretching to the tallest item and leaving a dead gap under
+   the short text column; align each column to the picture instead */
+.tl-row > div{min-width:0}
+
+/* --------------------------------------------------------------- numbers */
+.figures{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:1px;
+  background:var(--rule);
+  border-block:1px solid var(--rule);
+}
+.fig{
+  background:var(--ink);
+  padding:clamp(26px,5vh,54px) clamp(16px,2vw,34px);
+}
+.fig .n{
+  font-size:clamp(40px,5.4vw,86px);
+  line-height:1;
+  letter-spacing:-.05em;
+  color:var(--gold);
+}
+.fig .l{margin-top:12px;color:rgba(241,236,232,.62)}
+
+/* ----------------------------------------------------------------- visit */
+.visit{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:clamp(26px,5vw,70px);
+}
+.visit h3{margin:0 0 10px}
+.visit p{margin:0;color:rgba(241,236,232,.72)}
+
+.cta{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  margin-top:26px;
+  padding:15px 30px;
+  border:1px solid var(--gold);
+  color:var(--gold);
+  border-radius:999px;
+  letter-spacing:.02em;
+  transition:background .3s,color .3s;
+}
+.cta:hover{background:var(--gold);color:var(--ink)}
+
+/* ---------------------------------------------------------------- footer */
+footer{
+  padding:clamp(40px,8vh,90px) var(--gutter) clamp(26px,5vh,50px);
+  border-top:1px solid var(--rule);
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:30px;
+  align-items:end;
+  color:rgba(241,236,232,.55);
+}
+footer .mark{display:flex;align-items:center;gap:14px;color:var(--paper)}
+footer .mark img{width:52px;height:52px;border-radius:50%}
+
+/* --------------------------------------------------------------- motion */
+/* reveal on scroll, the slow confident fade the reference uses */
+.rise{
+  opacity:0;
+  transform:translateY(26px);
+  transition:opacity 1.05s cubic-bezier(.22,.61,.36,1),
+             transform 1.05s cubic-bezier(.22,.61,.36,1);
+  will-change:opacity,transform;
+}
+.rise.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .rise{opacity:1;transform:none;transition:none}
+}
+
+/* ---------------------------------------------------------------- phones */
+@media (max-width:820px){
+  .tl-row{grid-template-columns:1fr;gap:18px}
+  .timeline::before{left:10px}
+  .tl-node{left:10px}
+  .tl-row.flip .a,.tl-row.flip .b{order:0;text-align:left}
+  .timeline{padding-left:38px}
+  .hero .line2{text-align:left}
+  .hero-meta{flex-wrap:wrap;gap:8px 18px}
+  .nav .hide-sm{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<nav class="nav">
+  <span class="dot" aria-hidden="true"></span>
+  <a href="#top">Home</a>
+  <a href="#arena" class="hide-sm">The Arena</a>
+  <a href="#story" class="hide-sm">Story</a>
+  <a href="#visit">Visit</a>
+  <span class="spacer"></span>
+  <a href="/login">Members</a>
+</nav>
+
+<!-- ================================================================ hero -->
+<header class="hero" id="top">
+  <div class="hero-bg">
+    {# Art-directed: the wide crop puts the building's own signboard low and
+       centre so the wordmark is not printed on top of it, and the phone crop
+       keeps the full width so the sign is never cut mid-word. #}
+    <picture>
+      <source media="(max-width: 820px)"
+              srcset="{{ url_for('static', filename='img/hero-phone.webp') }}">
+      <img src="{{ url_for('static', filename='img/hero-wide.webp') }}"
+           alt="Infanta Sports Arena seen from the road, with mountains behind">
+    </picture>
+  </div>
+
+  <div class="hero-top">
+    <span class="display">Est. 2026 &nbsp;/&nbsp; {{ site.location }}</span>
+  </div>
+
+  <div class="hero-bottom">
+    <h1 class="hero-wordmark">Infanta<br>Sports Arena</h1>
+    <div class="hero-meta">
+      <span class="small">Derby &amp; tournament</span>
+      <span class="small">{{ site.location }}</span>
+      <span class="spacer"></span>
+      <span class="caption">Scroll</span>
+    </div>
+  </div>
+
+  <span class="scrollcue" aria-hidden="true"></span>
+</header>
+
+<!-- ============================================================= opening -->
+<section class="pad statement" id="arena">
+  <h2 class="h2 rise">A cockpit built<br>for the province.</h2>
+  <p class="note small rise">
+    Infanta Sports Arena stands on the road into town, red against the rice
+    fields, with the mountains behind it. It was raised for the sport this
+    province has always kept: the derby, the crowd, the long afternoon that
+    runs into night.
+  </p>
+</section>
+
+<div class="bleed band rise">
+  <img src="{{ url_for('static', filename='img/arena-sign.webp') }}"
+       alt="The arena signboard reading Infanta Sports Arena">
+</div>
+
+<!-- =============================================================== quote -->
+<section class="pad">
+  <p class="quote rise">
+    Every fight is watched by <span class="em">everyone at once</span>.
+    That is the whole point of a room like this.
+  </p>
+</section>
+
+<div class="bleed tall rise">
+  <img src="{{ url_for('static', filename='img/logo-scene.webp') }}"
+       alt="Two gamefowl meeting in the pit before a full gallery">
+</div>
+
+<!-- ============================================================ timeline -->
+<section class="timeline" id="story">
+  <h2 class="h2 rise" style="margin-bottom:clamp(46px,9vh,120px)">The house</h2>
+
+  <div class="tl-row rise">
+    <span class="tl-node" aria-hidden="true"></span>
+    <div class="a">
+      <img src="{{ url_for('static', filename='img/arena-facade.webp') }}"
+           alt="The red facade and signboard of Infanta Sports Arena">
+    </div>
+    <div class="b">
+      <div class="tl-year">2026</div>
+      <h3 class="h3" style="margin-top:14px">The arena opens</h3>
+      <p class="body small">
+        Built in Infanta and finished in 2026. Red walls, a clear span roof,
+        and a pit the whole gallery can see into.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-row flip rise">
+    <span class="tl-node" aria-hidden="true"></span>
+    <div class="a">
+      <img src="{{ url_for('static', filename='img/arena-setting.webp') }}"
+           alt="Rice fields and mountains beside the arena">
+    </div>
+    <div class="b">
+      <div class="tl-year">The setting</div>
+      <h3 class="h3" style="margin-top:14px">Fields on every side</h3>
+      <p class="body small">
+        The arena sits among working farmland with the range rising behind
+        it. People come in from the barangays on the road that passes the
+        front door.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-row rise">
+    <span class="tl-node" aria-hidden="true"></span>
+    <div class="a">
+      <img src="{{ url_for('static', filename='img/logo.webp') }}"
+           alt="The Infanta Sports Arena crest">
+    </div>
+    <div class="b">
+      <div class="tl-year">The mark</div>
+      <h3 class="h3" style="margin-top:14px">Gold, red and the pit</h3>
+      <p class="body small">
+        The crest carries the two birds meeting under the lights, ringed in
+        gold, with the year the house was established.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= figures -->
+{# Shown only when the operator confirms the books are live. The sample
+   database would otherwise advertise counts this arena never held. #}
+{% if figures %}
+<section class="figures rise">
+  <div class="fig">
+    <div class="n">{{ figures.events }}</div>
+    <div class="l small">Events held</div>
+  </div>
+  <div class="fig">
+    <div class="n">{{ figures.fights }}</div>
+    <div class="l small">Fights recorded</div>
+  </div>
+  <div class="fig">
+    <div class="n">{{ figures.derby_days }}</div>
+    <div class="l small">Derby days</div>
+  </div>
+  <div class="fig">
+    <div class="n">2026</div>
+    <div class="l small">Established</div>
+  </div>
+</section>
+{% else %}
+<section class="figures rise">
+  <div class="fig">
+    <div class="n">2026</div>
+    <div class="l small">Established</div>
+  </div>
+  <div class="fig">
+    <div class="n">Derby</div>
+    <div class="l small">&amp; tournament</div>
+  </div>
+  <div class="fig">
+    <div class="n">Infanta</div>
+    <div class="l small">Where it stands</div>
+  </div>
+</section>
+{% endif %}
+
+<div class="bleed thin rise">
+  <img src="{{ url_for('static', filename='img/arena-roofline.webp') }}"
+       alt="The roofline of the arena against the sky">
+</div>
+
+<!-- =============================================================== visit -->
+<section class="pad" id="visit">
+  <h2 class="h2 rise" style="margin-bottom:clamp(36px,7vh,90px)">Visit</h2>
+
+  <div class="visit rise">
+    <div>
+      <h3 class="h3">Where</h3>
+      <p class="small">
+        {{ site.location }}.<br>
+        {{ site.address }}
+      </p>
+    </div>
+    <div>
+      <h3 class="h3">When</h3>
+      <p class="small">
+        Derby days and tournaments<br>
+        through the season.
+      </p>
+    </div>
+    <div>
+      <h3 class="h3">Enquiries</h3>
+      <p class="small">
+        For entries, bookings and<br>
+        event schedules.
+      </p>
+      <a class="cta" href="#top">Get in touch</a>
+    </div>
+  </div>
+</section>
+
+<div class="bleed band rise">
+  <img src="{{ url_for('static', filename='img/arena-wide.webp') }}"
+       alt="Infanta Sports Arena from the road">
+</div>
+
+<!-- ============================================================== footer -->
+<footer>
+  <div class="mark">
+    <img src="{{ url_for('static', filename='img/logo-sm.webp') }}" alt="">
+    <span class="small">Infanta Sports Arena<br>Est. 2026</span>
+  </div>
+  <div class="small">{{ site.location }}</div>
+  <div class="small">
+    <a href="/login">Members area</a>
+  </div>
+  <div class="small">&copy; {{ year }} Infanta Sports Arena</div>
+</footer>
+
+<script>
+// Reveal on scroll. IntersectionObserver rather than scroll handlers so it
+// stays smooth on the phones most visitors will use.
+(function(){
+  var items = document.querySelectorAll('.rise');
+  if (!('IntersectionObserver' in window)) {
+    items.forEach(function(el){ el.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, {rootMargin: '0px 0px -12% 0px', threshold: 0.08});
+  items.forEach(function(el){ io.observe(el); });
+})();
+</script>
+
+</body>
+</html>
+

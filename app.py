@@ -256,9 +256,72 @@ def logout():
 # --- Pages ---
 
 @app.route('/')
-@require_login
 def home():
-    return redirect(url_for('dashboard'))
+    """The public face of the arena.
+
+    Anyone signed in is on their way to the books, so send them straight
+    through; url_for('home') is the post-login redirect and must keep
+    behaving that way. Everyone else gets the landing page.
+    """
+    if session.get('user_id'):
+        return redirect(url_for('dashboard'))
+    return render_template('landing.html', **landing_context())
+
+
+def landing_context():
+    """Context for the public landing page.
+
+    The counts here are a PUBLIC CLAIM, so they must be this arena's own and
+    they must be true. Two traps were live before this:
+
+      - counting every row counted all six partners' books, so Infanta would
+        have advertised 186 events it did not hold;
+      - the shipped database is sample data, so those numbers are invented.
+
+    So: scope to Infanta's own boss, and show the block only once the
+    operator confirms the books are real (ARENA_FIGURES_REAL=1). Leaving the
+    space empty is honest; publishing a fabricated number is not.
+    """
+    figures = None
+    if os.environ.get('ARENA_FIGURES_REAL') == '1':
+        try:
+            conn = db.get_connection()
+            owner = conn.execute(
+                "SELECT id FROM users WHERE role = 'boss' AND arena_name = ?",
+                (os.environ.get('ARENA_NAME', 'Infanta Arena'),)).fetchone()
+            if owner:
+                oid = owner['id']
+                events = conn.execute(
+                    "SELECT COUNT(*) c FROM events "
+                    "WHERE deleted_at IS NULL AND boss_id = ?", (oid,)).fetchone()['c']
+                fights = conn.execute(
+                    "SELECT COUNT(*) c FROM fights WHERE boss_id = ?",
+                    (oid,)).fetchone()['c']
+                derby_days = conn.execute(
+                    "SELECT COUNT(DISTINCT date) c FROM events "
+                    "WHERE event_type = 'derby' AND deleted_at IS NULL "
+                    "AND boss_id = ?", (oid,)).fetchone()['c']
+                figures = {
+                    'events': '{:,}'.format(events),
+                    'fights': '{:,}'.format(fights),
+                    'derby_days': '{:,}'.format(derby_days),
+                }
+            conn.close()
+        except Exception:
+            # the landing page must never 500 just because a count failed
+            figures = None
+
+    return {
+        'figures': figures,
+        'site': {
+            # kept as data because the exact address is Patrick's to confirm;
+            # better an honest placeholder than an invented province
+            'location': os.environ.get('ARENA_LOCATION', 'Infanta, Philippines'),
+            'address': os.environ.get('ARENA_ADDRESS', 'On the main road into town.'),
+        },
+        'year': date.today().year,
+    }
+
 
 @app.route('/dashboard')
 @require_login
