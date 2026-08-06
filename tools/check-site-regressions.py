@@ -17,6 +17,16 @@ Two others were visual (mismatched card heights, a caption contradicting its
 screenshot) and are honestly outside what any of these checks can see; that
 is stated rather than papered over.
 """
+import os as _os
+import sys as _sys
+
+# Runnable from anywhere: anchor to the repository root so `import db` and the
+# relative data/ and docs/ paths resolve the same way they do from the root.
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+_os.chdir(_ROOT)
+
 import io
 import os
 import re
