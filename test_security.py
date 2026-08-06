@@ -386,6 +386,40 @@ for pyfile in _glob.glob("*.py"):
 check(not cred_hits, "no hardcoded password literals in committed scripts",
       "; ".join(cred_hits[:4]))
 
+# The check above only sees the working tree. Git keeps everything, and this
+# repository is public, so a secret committed once is readable forever even
+# after it is deleted. Two things matter most:
+#   - the database itself must never have been committed (that would publish
+#     the partners' actual financials, far worse than the passwords)
+#   - no API key, token or private key anywhere in history
+import subprocess as _sp
+
+
+def _git(*args):
+    return _sp.run(["git", *args], capture_output=True, text=True,
+                   encoding="utf-8", errors="replace").stdout
+
+
+_hist_paths = {p for p in _git("log", "--pretty=format:", "--name-only",
+                               "--all").split("\n") if p.strip()}
+_db_committed = sorted(p for p in _hist_paths
+                       if p.lower().endswith((".db", ".sqlite", ".sqlite3")))
+check(not _db_committed, "the database was never committed to history",
+      str(_db_committed))
+
+_SECRET_PATTERNS = [
+    (r"gh[pousr]_[A-Za-z0-9]{16,}", "GitHub token"),
+    (r"AKIA[0-9A-Z]{16}", "AWS key"),
+    (r"AIza[0-9A-Za-z_\-]{35}", "Google API key"),
+    (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "private key"),
+]
+_secret_hits = []
+for _pat, _label in _SECRET_PATTERNS:
+    if _git("log", "--all", "--oneline", "-S", _pat, "--pickaxe-regex").strip():
+        _secret_hits.append(_label)
+check(not _secret_hits, "no API keys or private keys in git history",
+      str(_secret_hits))
+
 
 # ============================================== 9. list pages render ======
 section("9. List pages show the owner's records, and only theirs")
