@@ -163,11 +163,11 @@ def delete_user(username: str) -> bool:
 
 # --- Events & Fights ---
 
-def insert_event(date_str: str, name: str, event_type: str, note: str = None, created_by: str = None, boss_id: int = None) -> int:
+def insert_event(date_str: str, name: str, event_type: str, note: str = None, created_by: str = None, boss_id: int = None, location: str = None) -> int:
     conn = get_connection()
     cur = conn.execute(
-        "INSERT INTO events (date, name, event_type, note, created_by, boss_id) VALUES (?, ?, ?, ?, ?, ?)",
-        (date_str, name, event_type, note, created_by, boss_id),
+        "INSERT INTO events (date, name, event_type, note, created_by, boss_id, location) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (date_str, name, event_type, note, created_by, boss_id, location),
     )
     conn.commit()
     event_id = cur.lastrowid

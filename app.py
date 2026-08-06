@@ -311,10 +311,14 @@ def api_events():
 @require_login
 def new_event():
     if request.method == 'POST':
-        date_str = request.form.get('date')
+        # the form posts event_date/notes; accept both spellings so an
+        # older client or a direct POST keeps working
+        date_str = request.form.get('date') or request.form.get('event_date')
         name = request.form.get('name', '').strip()
-        event_type = request.form.get('event_type')
-        note = request.form.get('note', '').strip() or None
+        event_type = request.form.get('event_type') or 'derby'
+        note = ((request.form.get('note') or request.form.get('notes') or '')
+                .strip() or None)
+        location = (request.form.get('location') or '').strip() or None
         
         if not all([date_str, name, event_type]):
             flash("Missing required fields.", "error")
@@ -322,7 +326,7 @@ def new_event():
         
         try:
             event_id = db.insert_event(date_str, name, event_type, note, g.username,
-                            boss_id=current_boss_id())
+                            boss_id=current_boss_id(), location=location)
             flash(f"Event created.", "success")
             return redirect(url_for('event_detail', event_id=event_id))
         except Exception as e:
@@ -462,7 +466,8 @@ def new_expense():
         amount = request.form.get('amount', type=float)
         description = request.form.get('description', '').strip()
         category = request.form.get('category', '').strip()
-        note = request.form.get('note', '').strip() or None
+        note = ((request.form.get('note') or request.form.get('notes') or '')
+                .strip() or None)
         
         if not all([date_str, amount]):
             flash("Missing required fields.", "error")
@@ -505,7 +510,11 @@ def new_remittance():
     if request.method == 'POST':
         date_str = request.form.get('date')
         amount = request.form.get('amount', type=float)
-        note = request.form.get('note', '').strip() or None
+        note = ((request.form.get('note') or request.form.get('notes') or '')
+                .strip() or None)
+        recipient = (request.form.get('recipient') or '').strip()
+        if recipient:
+            note = f"To {recipient}" + (f" - {note}" if note else "")
         
         if not all([date_str, amount]):
             flash("Missing required fields.", "error")
@@ -549,15 +558,34 @@ def new_personnel():
         name = request.form.get('name', '').strip()
         position = request.form.get('position')
         contact = request.form.get('contact', '').strip() or None
-        date_hired = request.form.get('date_hired')
+        date_hired = request.form.get('date_hired') or None
+        # the form field is named daily_rate
         rate = request.form.get('rate', type=float)
+        if rate is None:
+            rate = request.form.get('daily_rate', type=float)
+
+        # The table only permits Admin/Handler/Security/Staff. Older markup
+        # offered job titles that do not exist there, so every submission
+        # failed the CHECK constraint; map them rather than rebuild the table.
+        POSITION_MAP = {
+            'pit_manager': 'Admin', 'referee': 'Handler', 'cashier': 'Staff',
+            'security': 'Security', 'cleaner': 'Staff', 'other': 'Staff',
+        }
+        position = POSITION_MAP.get((position or '').lower(), position)
+        if position not in ('Admin', 'Handler', 'Security', 'Staff'):
+            position = 'Staff'
+
+        # the column expects Active/Inactive, the select sends lower case
+        status = (request.form.get('status') or 'Active').capitalize()
+        if status not in ('Active', 'Inactive'):
+            status = 'Active'
         
         if not all([name, position]):
             flash("Missing required fields.", "error")
             return redirect(url_for('new_personnel'))
         
         try:
-            db.insert_personnel(name, position, contact, date_hired, 'Active', rate,
+            db.insert_personnel(name, position, contact, date_hired, status, rate,
                                 g.username, boss_id=current_boss_id())
             flash("Personnel added.", "success")
             return redirect(url_for('personnel_page'))

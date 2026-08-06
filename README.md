@@ -48,7 +48,7 @@ python tools/check-rotation-paths.py   # the single-account and legacy paths
 ## Tests
 
 ```bash
-python test_security.py     # 42 checks, runs against a throwaway DB copy
+python test_security.py     # 43 checks, runs against a throwaway DB copy
 python sanity_check.py      # imports and routes
 python tools/check-site.py  # the project site in docs/
 ```

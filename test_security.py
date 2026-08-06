@@ -474,6 +474,55 @@ finally:
 check(not undef_fails, "no page uses a template variable its route never passes",
       "; ".join(undef_fails[:3]))
 
+# A form whose field names do not match what its route reads is invisible to
+# every check above: the page renders, returns 200, and silently fails or
+# discards data. Four of seven forms were like this, found only by filling
+# them in a browser. Compare what each template posts against what its route
+# reads.
+import re as _re3
+
+FORM_ROUTES = {
+    "new_event.html": "new_event",
+    "new_expense.html": "new_expense",
+    "new_remittance.html": "new_remittance",
+    "new_personnel.html": "new_personnel",
+    "new_user.html": "new_user",
+    "login.html": "login",
+}
+app_src = open("app.py", encoding="utf-8").read()
+form_gaps = []
+for _tpl, _route in FORM_ROUTES.items():
+    try:
+        _src = open(f"templates/{_tpl}", encoding="utf-8").read()
+    except FileNotFoundError:
+        continue
+    _posted = set(_re3.findall(
+        r'<(?:input|select|textarea)[^>]*name="(\w+)"', _src)) - {"csrf_token"}
+    _m = _re3.search(rf"def {_route}\(.*?\):(.*?)(?=\n@app\.route|\Z)", app_src, _re3.S)
+    _body = _m.group(1) if _m else ""
+    _read = set(_re3.findall(r"request\.form\.get\(\s*['\"](\w+)['\"]", _body))
+    # a route may accept either of two spellings; only flag names it never reads
+    _missing = sorted(n for n in _read if n not in _posted)
+    # required-but-never-sent is the blocking case
+    _guard = _re3.search(r"if not all\(\[([^\]]*)\]\)", _body)
+    _required_vars = [v.strip() for v in _guard.group(1).split(",")] if _guard else []
+    _blocking = []
+    for _v in _required_vars:
+        # a route may read several alternative spellings for one value, e.g.
+        #   date_str = request.form.get('date') or request.form.get('event_date')
+        # so capture the whole assignment, not just the first get()
+        _assign = _re3.search(rf"^\s*{_re3.escape(_v)}\s*=\s*(.+?)(?=\n\s*\w+\s*=|\n\n)",
+                              _body, _re3.S | _re3.M)
+        if not _assign:
+            continue
+        _srcs = _re3.findall(r"request\.form\.get\(\s*['\"](\w+)['\"]", _assign.group(1))
+        if _srcs and not any(s in _posted for s in _srcs):
+            _blocking.append(f"{_v}<-{_srcs}")
+    if _blocking:
+        form_gaps.append(f"{_tpl}: required {_blocking} never posted")
+check(not form_gaps, "every form posts the fields its route requires",
+      "; ".join(form_gaps[:3]))
+
 
 # ========================================================== 10. no 5xx =====
 section("10. Every page loads without a server error")
