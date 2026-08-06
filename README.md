@@ -1,6 +1,9 @@
 # Infanta Arena — Management System
 
-**[epatrick7th.github.io/infanta-arena-app](https://epatrick7th.github.io/infanta-arena-app/)**
+**Public site:** [epatrick7th.github.io/infanta-arena-app](https://epatrick7th.github.io/infanta-arena-app/)
+— the arena's client-facing landing page.
+**Technical write-up:** [/system/](https://epatrick7th.github.io/infanta-arena-app/system/)
+— how the system works and what the audit found.
 
 A management system for a cockfighting arena run as an equal partnership.
 Six partners share one physical arena and keep their books apart: each
@@ -66,7 +69,23 @@ who approved it, and the boss can see both.
 
 A boss cannot see any other partner's books, whatever their own role.
 
+## The public site
+
+`docs/` is published by GitHub Pages. The landing page is not written by
+hand: it is rendered from `templates/landing4.html` through the real app, so
+the published page cannot drift from the one running locally.
+
+```bash
+python tools/build-pages.py   # render /v4 into docs/
+python tools/check-pages.py   # serve docs/ and drive it in a browser
+```
+
+**The fight schedule is baked in at build time.** The build prints the date
+range it froze. Rerun it when those dates pass, or the site will advertise
+fights that are over.
+
 ## Tests
+
 
 
 ```bash
