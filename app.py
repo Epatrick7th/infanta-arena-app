@@ -281,7 +281,19 @@ def dashboard():
 @app.route('/events')
 @require_login
 def events_page():
-    return render_template('events.html')
+    result = db.list_events(limit=60, boss_id=current_boss_id())
+    rows = result['rows'] if isinstance(result, dict) else result
+    # the card shows fights and revenue per event, so enrich each row.
+    # get_event_summary returns fight_count/total_revenue; the template
+    # reads total_fights, so map it rather than silently showing 0.
+    events = []
+    for e in rows:
+        summary = db.get_event_summary(e['id']) or {}
+        events.append({**e,
+                       'event_date': e.get('date'),
+                       'total_fights': summary.get('fight_count', 0),
+                       'total_revenue': summary.get('total_revenue', 0)})
+    return render_template('events.html', recent_events=events)
 
 @app.route('/api/events')
 @require_login
@@ -425,7 +437,9 @@ def api_fight(fight_id):
 @app.route('/expenses')
 @require_login
 def expenses_page():
-    return render_template('expenses.html')
+    result = db.list_expenses(limit=60, boss_id=current_boss_id())
+    rows = result['rows'] if isinstance(result, dict) else result
+    return render_template('expenses.html', expenses=rows)
 
 @app.route('/api/expenses')
 @require_login
@@ -469,7 +483,9 @@ def new_expense():
 @app.route('/remittances')
 @require_login
 def remittances_page():
-    return render_template('remittances.html')
+    result = db.list_cash_remittances(limit=60, boss_id=current_boss_id())
+    rows = result['rows'] if isinstance(result, dict) else result
+    return render_template('remittances.html', remittances=rows)
 
 @app.route('/api/remittances')
 @require_login
@@ -510,7 +526,9 @@ def new_remittance():
 @app.route('/personnel')
 @require_login
 def personnel_page():
-    return render_template('personnel.html')
+    result = db.list_personnel(limit=100, boss_id=current_boss_id())
+    rows = result['rows'] if isinstance(result, dict) else result
+    return render_template('personnel.html', personnel=rows)
 
 @app.route('/api/personnel')
 @require_login

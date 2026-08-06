@@ -387,8 +387,35 @@ check(not cred_hits, "no hardcoded password literals in committed scripts",
       "; ".join(cred_hits[:4]))
 
 
-# =========================================================== 9. no 5xx =====
-section("9. Every page loads without a server error")
+# ============================================== 9. list pages render ======
+section("9. List pages show the owner's records, and only theirs")
+with app.test_client() as c:
+    uid = login(c, BOSS)
+    import re as _re2
+
+    html = c.get("/events").get_data(as_text=True)
+    owned = con.execute(
+        "select count(*) n from events where boss_id=? and deleted_at is null",
+        (uid,)).fetchone()["n"]
+    cards = len(_re2.findall(r'href="/events/\d+"', html))
+    check("No events yet" not in html and cards > 0,
+          f"events page lists the owner's {owned} events", f"{cards} cards")
+
+    other = con.execute(
+        "select id from events where boss_id<>? limit 1", (uid,)).fetchone()
+    if other:
+        check(f'href="/events/{other["id"]}"' not in html,
+              "another partner's event is not listed on the page")
+
+    html = c.get("/expenses").get_data(as_text=True)
+    check("No expenses recorded yet" not in html, "expenses page lists rows")
+
+    html = c.get("/remittances").get_data(as_text=True)
+    check("No remittances yet" not in html, "remittances page lists rows")
+
+
+# ========================================================== 10. no 5xx =====
+section("10. Every page loads without a server error")
 GETS = [r for r in app.url_map.iter_rules()
         if "GET" in r.methods and r.endpoint not in ("static", "logout")]
 for creds, label in ((BOSS, "boss"), (ASSISTANT, "assistant")):

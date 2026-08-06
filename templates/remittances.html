@@ -28,9 +28,26 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for r in remittances %}
                     <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
-                        <td class="px-8 py-4 text-slate-300">No remittances yet</td>
+                        <td class="px-8 py-4 text-slate-300">{{ r.date }}</td>
+                        <td class="px-8 py-4 text-gold-400 font-semibold">&#8369;{{ "{:,.2f}".format(r.amount or 0) }}</td>
+                        <td class="px-8 py-4 text-slate-300">{{ r.created_by or '-' }}</td>
+                        <td class="px-8 py-4 text-slate-400">{{ r.note or '-' }}</td>
+                        <td class="px-8 py-4 text-right">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold
+                                {% if r.approval_status == 'approved' %}bg-emerald-900/50 text-emerald-300
+                                {% elif r.approval_status == 'rejected' %}bg-red-900/50 text-red-300
+                                {% else %}bg-yellow-900/50 text-yellow-300{% endif %}">
+                                {{ (r.approval_status or 'pending')|capitalize }}
+                            </span>
+                        </td>
                     </tr>
+                    {% else %}
+                    <tr class="border-b border-slate-700/30">
+                        <td colspan="5" class="px-8 py-8 text-center text-slate-400">No remittances yet.</td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>

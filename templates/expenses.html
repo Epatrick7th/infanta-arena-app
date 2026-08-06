@@ -26,9 +26,18 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for e in expenses %}
                     <tr class="border-b border-slate-700/30 hover:bg-slate-700/20 transition">
+                        <td class="px-8 py-4 text-slate-300">{{ e.date }}</td>
+                        <td class="px-8 py-4 text-slate-300 capitalize">{{ e.category or '-' }}</td>
+                        <td class="px-8 py-4 text-slate-300">{{ e.description or '-' }}</td>
+                        <td class="px-8 py-4 text-red-300 font-semibold">&#8369;{{ "{:,.2f}".format(e.amount or 0) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="border-b border-slate-700/30">
                         <td colspan="4" class="px-8 py-8 text-center text-slate-400">No expenses recorded yet.</td>
                     </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>

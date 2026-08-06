@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Infanta Arena — Management System</title>
+<meta name="description" content="A cockfighting arena management system for six equal partners: shared operations, separate books. Flask, SQLite, no framework." />
+<meta property="og:title" content="Infanta Arena — Management System" />
+<meta property="og:description" content="Shared arena, separate books. Six partners, strict data isolation, financial analytics." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#08090C; --bg2:#0F1116; --card:#12151B;
+  --fg:#E9ECF2; --mute:rgba(233,236,242,.60); --faint:rgba(233,236,242,.34);
+  --line:rgba(255,255,255,.09);
+  --acc:#E0223C;          /* sabong red */
+  --acc-2:#FF4D63;
+  --ok:#2ED573; --warn:#FFB020;
+  --shell:min(1160px,100% - 2.5rem);
+  --e:cubic-bezier(.22,1,.36,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.65;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+img{max-width:100%;display:block}
+a{color:inherit}
+.shell{width:var(--shell);margin-inline:auto}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);
+  background:rgba(8,9,12,.82);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 0}
+.logo{display:flex;align-items:center;gap:.6rem;font-weight:800;letter-spacing:-.02em}
+.logo i{width:26px;height:26px;border-radius:7px;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--acc),#8C0F20);font-style:normal;font-size:.8rem}
+.nav .links{display:flex;gap:.3rem;align-items:center}
+.nav .links a{padding:.5rem .8rem;border-radius:8px;text-decoration:none;color:var(--mute);
+  font-size:.86rem;font-weight:500;transition:color .25s,background .25s}
+.nav .links a:hover{color:var(--fg);background:rgba(255,255,255,.06)}
+.nav .gh{border:1px solid var(--line);border-radius:8px;padding:.5rem .85rem!important}
+@media(max-width:720px){.nav .links a:not(.gh){display:none}}
+
+/* ---------- hero ---------- */
+header{padding:clamp(3.5rem,10vh,6.5rem) 0 clamp(2.5rem,6vh,4rem);
+  background:radial-gradient(110% 90% at 50% 0,rgba(224,34,60,.13),transparent 64%)}
+.tag{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .85rem;border-radius:100px;
+  background:rgba(224,34,60,.13);border:1px solid rgba(224,34,60,.4);color:#FF8494;
+  font-size:.66rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+h1{margin:1.3rem 0 1.1rem;font-size:clamp(2.1rem,1.3rem + 3.9vw,4.4rem);font-weight:900;
+  letter-spacing:-.05em;line-height:1;text-wrap:balance;max-width:16ch}
+h1 em{font-style:normal;
+  background:linear-gradient(100deg,var(--acc-2),#FFB4BE);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{margin:0;max-width:62ch;color:var(--mute);font-weight:300;
+  font-size:clamp(1.02rem,.98rem + .35vw,1.22rem)}
+.cta{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:2.2rem}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.4rem;border-radius:10px;
+  font-weight:600;font-size:.92rem;text-decoration:none;transition:transform .3s var(--e),background .3s,border-color .3s}
+.btn:hover{transform:translateY(-2px)}
+.btn.p{background:var(--acc);color:#fff}
+.btn.p:hover{background:var(--acc-2)}
+.btn.s{border:1px solid rgba(255,255,255,.2);color:var(--fg)}
+.btn.s:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.35)}
+
+/* ---------- stat strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:clamp(2.5rem,6vh,4rem);
+  background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+@media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--bg2);padding:1.3rem 1.2rem}
+.stat b{display:block;font-size:clamp(1.5rem,1.2rem + 1vw,2.1rem);font-weight:800;
+  letter-spacing:-.04em;line-height:1.1}
+.stat span{display:block;margin-top:.25rem;font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint);font-weight:600}
+
+/* ---------- sections ---------- */
+section{padding:clamp(3rem,8vh,5.5rem) 0}
+.eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--acc-2);margin:0 0 .7rem}
+h2{margin:0 0 .8rem;font-size:clamp(1.6rem,1.3rem + 1.5vw,2.5rem);font-weight:800;
+  letter-spacing:-.035em;line-height:1.1;text-wrap:balance}
+.sub{margin:0 0 2.4rem;max-width:58ch;color:var(--mute);font-weight:300}
+
+/* ---------- screenshots ---------- */
+.shots{display:grid;grid-template-columns:repeat(2,1fr);gap:1.2rem}
+@media(max-width:860px){.shots{grid-template-columns:1fr}}
+figure{margin:0;border-radius:14px;overflow:hidden;background:var(--card);
+  border:1px solid var(--line);transition:transform .5s var(--e),border-color .4s}
+figure:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.2)}
+figure img{width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:top center;
+  display:block}
+figcaption{padding:.9rem 1.1rem 1.1rem;font-size:.85rem;color:var(--mute);font-weight:300}
+figcaption b{display:block;color:var(--fg);font-weight:600;font-size:.95rem;margin-bottom:.15rem}
+
+/* A phone screenshot cropped to 16/10 would show a sliver of itself. Keep the
+   same 16/10 frame so the cards stay the same height, and sit the whole phone
+   inside it. min-height:0 lets the grid child actually shrink to the frame;
+   without it the image keeps its intrinsic height and overflows. */
+.phone-wrap{aspect-ratio:16/10;display:grid;place-items:center;overflow:hidden;
+  background:linear-gradient(160deg,#161B24,#0D1015);padding:1.1rem}
+.phone-wrap img{width:auto;height:100%;min-height:0;max-width:100%;
+  aspect-ratio:390/844;object-fit:contain;
+  border-radius:10px;border:1px solid var(--line);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,.95)}
+
+/* ---------- feature grid ---------- */
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem}
+@media(max-width:900px){.feat{grid-template-columns:1fr}}
+.f{padding:1.5rem 1.4rem;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.f h3{margin:0 0 .5rem;font-size:1.02rem;font-weight:700;letter-spacing:-.01em;
+  display:flex;align-items:center;gap:.6rem}
+.f h3 i{width:22px;height:22px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;
+  background:rgba(224,34,60,.16);color:var(--acc-2);font-style:normal;font-size:.72rem;font-weight:800}
+.f p{margin:0;color:var(--mute);font-size:.9rem;font-weight:300}
+
+/* ---------- security ---------- */
+.sec{border-radius:16px;border:1px solid var(--line);background:var(--card);overflow:hidden}
+.sec-h{padding:1.3rem 1.5rem;border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;justify-content:space-between}
+.sec-h b{font-size:.95rem;font-weight:700}
+.badge{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .7rem;border-radius:100px;
+  font-size:.7rem;font-weight:700;letter-spacing:.06em;
+  background:rgba(46,213,115,.14);color:#7BE8A6;border:1px solid rgba(46,213,115,.35)}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:.75rem 1.5rem;border-bottom:1px solid var(--line)}
+th{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700}
+tr:last-child td{border-bottom:0}
+td.n{color:var(--mute);font-weight:300}
+td .fx{color:#7BE8A6;font-weight:600}
+
+/* ---------- stack ---------- */
+.stack{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip{padding:.45rem .9rem;border-radius:100px;background:rgba(255,255,255,.05);
+  border:1px solid var(--line);font-size:.82rem;color:var(--mute)}
+
+/* ---------- callout ---------- */
+.call{margin-top:2rem;padding:1.3rem 1.4rem;border-radius:14px;
+  background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.3)}
+.call b{color:var(--warn)}
+.call p{margin:.4rem 0 0;color:var(--mute);font-size:.9rem;font-weight:300}
+
+footer{border-top:1px solid var(--line);padding:2.5rem 0 3.5rem;color:var(--faint);font-size:.85rem}
+.fr{display:flex;flex-wrap:wrap;gap:.7rem 1.5rem;justify-content:space-between;align-items:center}
+footer a{color:var(--mute)}
+
+/* reveal */
+.r{opacity:0;transform:translateY(18px);transition:opacity .7s var(--e),transform .7s var(--e)}
+.r.in{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="shell nav">
+    <span class="logo"><i>IA</i> Infanta Arena</span>
+    <span class="links">
+      <a href="#screens">Screens</a>
+      <a href="#features">Features</a>
+      <a href="#security">Security</a>
+      <a href="#stack">Stack</a>
+      <a class="gh" href="https://github.com/Epatrick7th/infanta-arena-app" target="_blank" rel="noopener">GitHub</a>
+    </span>
+  </div>
+</nav>
+
+<header>
+  <div class="shell">
+    <span class="tag">Arena management system</span>
+    <h1>One arena. Six partners. <em>Separate books.</em></h1>
+    <p class="lede">
+      A management system for a cockfighting arena run as an equal partnership.
+      Every partner records their own events, fights, revenue and expenses, sees
+      their own profit and loss, and cannot see anyone else's. Built as a plain
+      Flask app with SQLite: no framework, no build step, no JavaScript bundle.
+    </p>
+    <div class="cta">
+      <a class="btn p" href="#screens">See the system</a>
+      <a class="btn s" href="https://github.com/Epatrick7th/infanta-arena-app" target="_blank" rel="noopener">View source</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b>48</b><span>Routes</span></div>
+      <div class="stat"><b>6</b><span>Equal partners</span></div>
+      <div class="stat"><b>39</b><span>Security checks</span></div>
+      <div class="stat"><b>0</b><span>JS frameworks</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="screens">
+  <div class="shell">
+    <p class="eyebrow r">The system</p>
+    <h2 class="r">Screens from the running app</h2>
+    <p class="sub r">
+      Captured directly from the application against a month of sample operations,
+      not mocked up. Figures shown are generated test data.
+    </p>
+
+    <div class="shots">
+      <figure class="r">
+        <img src="screenshots/dashboard.webp" alt="Executive dashboard showing cash, revenue, net profit and pending approvals" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Executive dashboard</b>Cash position, revenue, net profit and anything waiting for approval, for the signed-in partner only.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/analytics.webp" alt="Analytics dashboard with profit and loss" loading="lazy" width="1440" height="1109" />
+        <figcaption><b>Financial analytics</b>Daily, weekly and monthly profit and loss, with revenue and expenses broken down by source and category.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/analytics-trends.webp" alt="Seven day trend analysis" loading="lazy" width="1440" height="905" />
+        <figcaption><b>Trends</b>Seven-day movement, which is where an unusual expense day shows up first.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/live-arena.webp" alt="Live fight dashboard with betting totals" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Live arena</b>The current fight, with Meron and Wala totals updating as bets are recorded.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/approvals.webp" alt="Approval queue" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Approvals</b>Assistants enter the numbers; the partner approves them. Nothing is counted until it is approved.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/events.webp" alt="Events list" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Events and fights</b>Every event, with its fights, revenue lines and running totals.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/expenses.webp" alt="Expenses list" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Expenses</b>Payroll, feed, utilities and supplies, each one recorded against the partner who entered it.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/analytics-monthly.webp" alt="Monthly profit and loss" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Monthly P&amp;L</b>The figure the partners actually meet about: a month's revenue, expenses and margin in one view.</figcaption>
+      </figure>
+      <figure class="r">
+        <img src="screenshots/analytics-sales-today.webp" alt="Revenue drill-down" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Drill-downs</b>Every headline figure opens into the individual records behind it.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="shell">
+    <p class="eyebrow r">What it does</p>
+    <h2 class="r">Built around how the arena actually runs</h2>
+    <p class="sub r">
+      Six partners share one physical arena but keep their books apart. Assistants
+      do the data entry, partners approve it, and nobody sees another partner's money.
+    </p>
+
+    <div class="feat">
+      <div class="f r"><h3><i>1</i>Separate books</h3><p>Every record is owned by the partner who created it. Lists, detail pages and the API are all filtered by owner, so one partner's dashboard never contains another's figures.</p></div>
+      <div class="f r"><h3><i>2</i>Roles</h3><p>Partners view and approve. Assistants enter data for their own arena and nothing else. Admins manage users. Each role sees only the screens it needs.</p></div>
+      <div class="f r"><h3><i>3</i>Approval workflow</h3><p>Events, revenue, expenses and remittances all start as pending and require the partner's approval, so the numbers on the dashboard are ones somebody signed off.</p></div>
+      <div class="f r"><h3><i>4</i>Profit and loss</h3><p>Daily, weekly and monthly P&amp;L computed from the underlying records, broken down by revenue source and expense category, with a seven-day trend.</p></div>
+      <div class="f r"><h3><i>5</i>Live fight tracking</h3><p>Start a fight, record bets on either side as they come in, watch the Meron/Wala split move, then close it with a winner.</p></div>
+      <div class="f r"><h3><i>6</i>Staff and shifts</h3><p>Personnel records, a daily shift roster and per-shift rates, scoped to the arena that owns them.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="shell">
+    <p class="eyebrow r">Security</p>
+    <h2 class="r">The isolation is tested, not assumed</h2>
+    <p class="sub r">
+      A partnership app is only worth using if the partners' books really are
+      separate. An audit in August 2026 found that several were not, and each
+      fix is now held in place by an automated check.
+    </p>
+
+    <div class="sec r">
+      <div class="sec-h">
+        <b>test_security.py</b>
+        <span class="badge">39 checks passing</span>
+      </div>
+      <table>
+        <thead><tr><th>Was broken</th><th>Now</th></tr></thead>
+        <tbody>
+          <tr><td class="n">List endpoints returned every partner's records to anyone signed in</td><td><span class="fx">Filtered by owner</span></td></tr>
+          <tr><td class="n">Records could be opened or edited by guessing their id</td><td><span class="fx">Ownership checked</span></td></tr>
+          <tr><td class="n">New records were all attributed to the first partner</td><td><span class="fx">Owner recorded</span></td></tr>
+          <tr><td class="n">Four write endpoints returned an error every time</td><td><span class="fx">Working, with tests</span></td></tr>
+          <tr><td class="n">Every analytics drill-down errored on click</td><td><span class="fx">Pointed at the real schema</span></td></tr>
+          <tr><td class="n">One failed save locked the database until restart</td><td><span class="fx">Connections released</span></td></tr>
+          <tr><td class="n">No CSRF protection, despite the docs claiming otherwise</td><td><span class="fx">SameSite + origin check</span></td></tr>
+          <tr><td class="n">Passwords committed in the repository</td><td><span class="fx">Removed, build fails on reappearance</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="call r">
+      <b>Honest status</b>
+      <p>
+        This is working software with a tested security boundary, not a finished
+        product. It has not been through a third-party audit or a production
+        deployment. The repository's build summary lists exactly what remains.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="stack">
+  <div class="shell">
+    <p class="eyebrow r">How it is built</p>
+    <h2 class="r">Deliberately small</h2>
+    <p class="sub r">
+      Python and SQLite, server-rendered HTML, and Tailwind from a CDN. No build
+      step, no bundler, no client-side framework. It runs with one command and
+      deploys anywhere that runs Python.
+    </p>
+    <div class="stack r">
+      <span class="chip">Python 3</span>
+      <span class="chip">Flask</span>
+      <span class="chip">SQLite</span>
+      <span class="chip">Jinja templates</span>
+      <span class="chip">Tailwind (CDN)</span>
+      <span class="chip">Waitress</span>
+      <span class="chip">pbkdf2 password hashing</span>
+      <span class="chip">Playwright (tests)</span>
+      <span class="chip">No build step</span>
+    </div>
+
+    <div class="shots" style="margin-top:2.4rem">
+      <figure class="r">
+        <img src="screenshots/login.webp" alt="Login screen" loading="lazy" width="1440" height="900" />
+        <figcaption><b>Sign in</b>Password hashing with pbkdf2; sessions are SameSite and HTTP-only.</figcaption>
+      </figure>
+      <figure class="r phone">
+        <div class="phone-wrap">
+          <img src="screenshots/dashboard-mobile.webp" alt="Dashboard on a phone" loading="lazy" width="390" height="844" />
+        </div>
+        <figcaption><b>On a phone</b>The partners check figures from the arena floor, so every screen works at phone width.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="shell fr">
+    <span>Infanta Arena management system</span>
+    <span><a href="https://github.com/Epatrick7th/infanta-arena-app" target="_blank" rel="noopener">Source on GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var els = document.querySelectorAll('.r');
+  if (rm || !('IntersectionObserver' in window)) {
+    els.forEach(function(e){ e.classList.add('in'); });
+    return;
+  }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, {rootMargin: '0px 0px -8% 0px'});
+  els.forEach(function(e, i){ e.style.transitionDelay = (i % 4) * 70 + 'ms'; io.observe(e); });
+})();
+</script>
+
+</body>
+</html>
