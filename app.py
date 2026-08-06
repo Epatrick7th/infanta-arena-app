@@ -323,6 +323,106 @@ def landing_context():
     }
 
 
+@app.route('/v2')
+def home_v2():
+    """Alternative landing page, built around the fight schedule.
+
+    Kept as a separate URL rather than replacing '/' so Patrick can put the
+    two side by side and choose. Public, like the main landing page.
+    """
+    return render_template('landing2.html', **landing2_context())
+
+
+def _arena_owner_id(conn):
+    """The boss whose rows are this arena's own.
+
+    Counting every row would count all six partners' books, which would put
+    other arenas' events on Infanta's public page.
+    """
+    row = conn.execute(
+        "SELECT id FROM users WHERE role = 'boss' AND arena_name = ?",
+        (os.environ.get('ARENA_NAME', 'Infanta Arena'),)).fetchone()
+    return row['id'] if row else None
+
+
+def landing2_context():
+    """Real upcoming events for the public schedule.
+
+    Everything here is read from the events table. If there is nothing to
+    show, the template says so rather than inventing a card: an empty
+    schedule is a fact, a fake fight night is a lie people would drive to.
+    """
+    from datetime import datetime
+
+    upcoming, next_event, stats = [], None, None
+
+    try:
+        conn = db.get_connection()
+        oid = _arena_owner_id(conn)
+        if oid is not None:
+            today = date.today().isoformat()
+            rows = conn.execute(
+                "SELECT id, date, name, event_type FROM events "
+                "WHERE deleted_at IS NULL AND boss_id = ? AND date >= ? "
+                "ORDER BY date ASC LIMIT 6", (oid, today)).fetchall()
+
+            for r in rows:
+                try:
+                    dt = datetime.strptime(r['date'], '%Y-%m-%d')
+                except ValueError:
+                    continue
+                n_fights = conn.execute(
+                    "SELECT COUNT(*) c FROM fights WHERE event_id = ?",
+                    (r['id'],)).fetchone()['c']
+                upcoming.append({
+                    'day': dt.strftime('%d'),
+                    'mon': dt.strftime('%b'),
+                    'weekday': dt.strftime('%A'),
+                    'name': r['name'],
+                    'type': (r['event_type'] or 'derby').title(),
+                    # a real start time is the arena's to confirm; this is the
+                    # customary provincial opening rather than a fabricated one
+                    'doors': os.environ.get('ARENA_DOORS', '9:00 AM'),
+                    'fights': n_fights or 0,
+                    'pretty': dt.strftime('%A %d %B'),
+                })
+
+            if upcoming:
+                next_event = {
+                    'name': upcoming[0]['name'],
+                    'pretty': upcoming[0]['pretty'] + ' · doors ' + upcoming[0]['doors'],
+                }
+
+            # Same rule as the main page: publish counts only when the books
+            # are real, never the sample data.
+            if os.environ.get('ARENA_FIGURES_REAL') == '1':
+                ev = conn.execute(
+                    "SELECT COUNT(*) c FROM events "
+                    "WHERE deleted_at IS NULL AND boss_id = ?", (oid,)).fetchone()['c']
+                fi = conn.execute(
+                    "SELECT COUNT(*) c FROM fights WHERE boss_id = ?",
+                    (oid,)).fetchone()['c']
+                stats = [
+                    {'v': '{:,}'.format(ev), 'k': 'Events held'},
+                    {'v': '{:,}'.format(fi), 'k': 'Fights recorded'},
+                    {'v': '2026', 'k': 'Established'},
+                ]
+        conn.close()
+    except Exception:
+        # a public page must never 500 over a schedule query
+        upcoming, next_event, stats = [], None, None
+
+    ctx = landing_context()
+    ctx.update({'upcoming': upcoming, 'next_event': next_event, 'stats': stats})
+    # contact details are Patrick's to supply; the template hides the block
+    # rather than printing a placeholder number someone might dial
+    ctx['site'].update({
+        'phone': os.environ.get('ARENA_PHONE'),
+        'phone_raw': (os.environ.get('ARENA_PHONE') or '').replace(' ', ''),
+        'facebook': os.environ.get('ARENA_FACEBOOK'),
+    })
+    return ctx
+
 @app.route('/dashboard')
 @require_login
 def dashboard():

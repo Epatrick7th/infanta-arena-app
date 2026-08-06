@@ -17,5 +17,7 @@ _*.txt
 _*.html
 
 # scratch capture folders from design work
-_ref/
-_shots/
+_ref*/
+_shots*/
+_review*/
+

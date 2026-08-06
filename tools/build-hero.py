@@ -43,6 +43,11 @@ def hero(target_w, target_h, name, crop_box=None, dark=0.62, blurpx=0):
 # for the wordmark to sit against.
 hero(2200, 1240, "hero-wide.webp", dark=0.58)
 
+# A brighter cut for the v2 page, which applies its own directional scrim in
+# CSS. Stacking that on top of a heavily darkened file buried the building in
+# near-black and wasted the only photograph we have.
+hero(2200, 1240, "hero-wide-lit.webp", dark=0.86)
+
 # Phone: portrait. Letterboxing the full building into a tall frame left a
 # small strip floating in a sea of black, which looked like a loading error.
 # Instead, fill the frame: a blurred, darkened enlargement of the photo backs

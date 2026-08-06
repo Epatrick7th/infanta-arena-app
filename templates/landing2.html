@@ -1,0 +1,572 @@
+﻿{# Landing page, version 2: built for sabungeros, not for a design gallery.
+
+   The v1 page borrowed a museum site's language (eladiodieste.com). It looks
+   composed, but research into what Philippine cockpit audiences actually
+   look for says they come for four things, in this order:
+
+     1. WHEN is the next fight, and what time does it start
+     2. WHERE is it and how do I get there / park
+     3. WHAT format is it (derby, hack fight, how many cocks)
+     4. Is it a serious house (scale, crowd, reputation)
+
+   Real arenas communicate almost entirely through Facebook schedule posts.
+   So this version leads with a live schedule pulled from the actual events
+   table rather than decorative prose, and keeps the dark/gold "fight night"
+   register the sport uses, drawn from the arena's own crest.
+
+   Legal footing matters here and is not decoration: e-sabong (online
+   betting) is SUSPENDED under Executive Order No. 9 (2022). Traditional
+   cockfighting in licensed cockpits stays legal under PD 449. This page
+   therefore promotes attendance at a licensed physical cockpit and never
+   offers or implies online betting, and it carries a responsible-gambling
+   notice with the real NCMH hotline.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infanta Sports Arena â€” Derby &amp; Traditional Sabong</title>
+<meta name="description" content="Infanta Sports Arena. Licensed cockpit in Infanta. Derby and traditional sabong. Fight schedule, directions and event information.">
+
+<meta property="og:title" content="Infanta Sports Arena">
+<meta property="og:description" content="Licensed cockpit. Derby and traditional sabong. Est. 2026.">
+<meta property="og:image" content="{{ url_for('static', filename='img/arena-wide.webp', _external=True) }}">
+
+<link rel="icon" href="{{ url_for('static', filename='img/logo-sm.webp') }}">
+<link rel="preload" as="image" href="{{ url_for('static', filename='img/hero-wide-lit.webp') }}">
+
+<style>
+:root{
+  /* the crest's own palette, sampled from the artwork */
+  --ink:#0A0806;
+  --ink-2:#12100D;
+  --card:#17130F;
+  --paper:#F4F0EA;
+  --muted:rgba(244,240,234,.62);
+  --gold:#FAD259;
+  --gold-2:#E3971A;
+  --red:#92201D;
+  --red-2:#5E0507;
+  --line:rgba(250,210,89,.20);
+  --line-soft:rgba(244,240,234,.12);
+
+  --g:clamp(18px,4.5vw,80px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:"Helvetica Neue",Helvetica,Arial,"Segoe UI",system-ui,sans-serif;
+  font-size:16px;
+  line-height:1.55;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit;text-decoration:none}
+
+/* -------------------------------------------------------------- type */
+.kicker{
+  font-size:12px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--gold);
+  font-weight:600;
+}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.035em;line-height:1}
+.h-hero{font-size:clamp(44px,9.6vw,132px);line-height:.92}
+.h-sec{font-size:clamp(30px,5.2vw,68px)}
+.h-card{font-size:clamp(19px,2.1vw,26px);letter-spacing:-.02em;line-height:1.15}
+.sub{color:var(--muted);font-size:clamp(15px,1.25vw,18px);line-height:1.6}
+
+.wrap{max-width:1320px;margin:0 auto;padding-inline:var(--g)}
+.sec{padding-block:clamp(58px,9vh,120px)}
+
+/* --------------------------------------------------------------- nav */
+.nav{
+  position:sticky;top:0;z-index:70;
+  background:rgba(10,8,6,.86);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line-soft);
+}
+.nav-in{
+  max-width:1320px;margin:0 auto;
+  padding:10px var(--g);
+  display:flex;align-items:center;gap:clamp(10px,2.4vw,30px);
+}
+.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:-.02em}
+.brand img{width:36px;height:36px;border-radius:50%;flex:none}
+.brand span{font-size:15px;line-height:1.05}
+.nav a.lnk{font-size:14px;color:var(--muted);transition:color .2s}
+.nav a.lnk:hover{color:var(--paper)}
+.nav .sp{margin-left:auto}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:11px 22px;border-radius:999px;
+  font-weight:700;font-size:14px;letter-spacing:.01em;
+  background:linear-gradient(180deg,var(--gold),var(--gold-2));
+  color:#1A1206;
+  border:none;cursor:pointer;
+  transition:filter .2s,transform .2s;
+  white-space:nowrap;
+}
+.btn:hover{filter:brightness(1.09);transform:translateY(-1px)}
+.btn.ghost{
+  background:transparent;color:var(--gold);
+  border:1px solid var(--line);
+}
+.btn.ghost:hover{background:rgba(250,210,89,.09)}
+
+/* -------------------------------------------------------------- hero */
+.hero{position:relative;overflow:hidden;background:#000}
+.hero-img{position:absolute;inset:0}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:center 26%}
+.hero-img::after{
+  content:"";position:absolute;inset:0;
+  background:
+    /* the first pass stacked two heavy scrims and buried the building in
+       near-black; keep the type legible but let the arena actually show */
+    linear-gradient(to bottom,rgba(10,8,6,.42) 0%,rgba(10,8,6,.06) 30%,rgba(10,8,6,.72) 74%,rgba(10,8,6,.96) 100%),
+    linear-gradient(90deg,rgba(10,8,6,.72) 0%,rgba(10,8,6,.20) 52%,rgba(10,8,6,0) 78%);
+}
+.hero-in{
+  position:relative;z-index:2;
+  max-width:1320px;margin:0 auto;
+  padding:clamp(56px,11vh,120px) var(--g) clamp(34px,6vh,64px);
+  min-height:clamp(560px,86svh,880px);
+  display:flex;flex-direction:column;justify-content:flex-end;
+}
+.hero .h-hero{text-shadow:0 4px 42px rgba(0,0,0,.75)}
+.hero-sub{margin-top:16px;max-width:46ch;font-size:clamp(15px,1.5vw,20px);color:rgba(244,240,234,.86)}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+
+/* live/next strip */
+.strip{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;
+  margin-top:clamp(24px,4vh,38px);
+  padding-top:18px;
+  border-top:1px solid var(--line);
+}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--gold);font-weight:700;
+}
+.pip{width:8px;height:8px;border-radius:50%;background:var(--gold);flex:none}
+.pip.live{background:#4ADE80;box-shadow:0 0 0 0 rgba(74,222,128,.7);animation:pulse 2s infinite}
+@keyframes pulse{
+  70%{box-shadow:0 0 0 9px rgba(74,222,128,0)}
+  100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}
+}
+@media (prefers-reduced-motion:reduce){.pip.live{animation:none}}
+
+/* ------------------------------------------------------------ schedule */
+/* the single most-wanted thing on a cockpit page */
+.sched{display:grid;gap:14px}
+.row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;gap:clamp(14px,2.6vw,34px);
+  padding:clamp(16px,2.4vw,24px) clamp(16px,2.6vw,28px);
+  background:var(--card);
+  border:1px solid var(--line-soft);
+  border-radius:14px;
+  transition:border-color .25s,transform .25s,background .25s;
+}
+.row:hover{border-color:var(--line);transform:translateX(3px);background:#1B1611}
+.row.next{
+  border-color:var(--line);
+  background:linear-gradient(90deg,rgba(250,210,89,.09),var(--card) 42%);
+}
+.date{text-align:center;min-width:62px}
+.date .d{font-size:clamp(26px,3.2vw,38px);font-weight:800;line-height:1;letter-spacing:-.04em}
+.date .m{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:5px;font-weight:700}
+.meta{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:7px;color:var(--muted);font-size:13.5px}
+.tag{
+  display:inline-block;
+  padding:3px 11px;border-radius:999px;
+  font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;
+  border:1px solid var(--line);color:var(--gold);
+}
+.tag.t{border-color:rgba(146,32,29,.75);color:#F0A9A5;background:rgba(146,32,29,.20)}
+
+/* ---------------------------------------------------------- info cards */
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:clamp(14px,2vw,22px)}
+.card{
+  background:var(--card);
+  border:1px solid var(--line-soft);
+  border-radius:16px;
+  padding:clamp(22px,3vw,34px);
+}
+.card .num{
+  font-size:12px;font-weight:800;letter-spacing:.16em;
+  color:var(--gold);margin-bottom:14px;
+}
+.card p{margin:10px 0 0;color:var(--muted);font-size:15px}
+.card ul{margin:12px 0 0;padding-left:18px;color:var(--muted);font-size:15px}
+.card li{margin-bottom:7px}
+
+/* ------------------------------------------------------------- figures */
+.stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;background:var(--line-soft);
+  border:1px solid var(--line-soft);border-radius:16px;overflow:hidden;
+}
+.stat{background:var(--ink-2);padding:clamp(20px,3vw,32px)}
+.stat .v{font-size:clamp(26px,3.4vw,44px);font-weight:800;letter-spacing:-.04em;color:var(--gold);line-height:1}
+.stat .k{margin-top:9px;font-size:13px;color:var(--muted)}
+
+/* --------------------------------------------------------------- split */
+.split{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(24px,4vw,64px);align-items:center}
+.shot{border-radius:18px;overflow:hidden;border:1px solid var(--line-soft)}
+.shot img{width:100%;height:100%;object-fit:cover}
+
+/* --------------------------------------------------------------- CTA */
+.band{
+  position:relative;overflow:hidden;
+  border-radius:20px;
+  border:1px solid var(--line);
+  background:
+    linear-gradient(100deg,rgba(146,32,29,.35),rgba(94,5,7,.20) 55%,rgba(10,8,6,0)),
+    var(--ink-2);
+  padding:clamp(28px,5vw,58px);
+}
+
+/* ------------------------------------------------------------- footer */
+footer{border-top:1px solid var(--line-soft);padding-block:clamp(34px,5vh,58px);color:var(--muted);font-size:14px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:26px}
+.legal{
+  margin-top:26px;padding-top:20px;
+  border-top:1px solid var(--line-soft);
+  font-size:12.5px;line-height:1.65;color:rgba(244,240,234,.46);
+}
+.legal strong{color:rgba(244,240,234,.72)}
+
+/* ------------------------------------------------------------- motion */
+.up{opacity:0;transform:translateY(20px);transition:opacity .8s ease,transform .8s ease}
+.up.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.up{opacity:1;transform:none;transition:none}}
+
+@media (max-width:860px){
+  .split{grid-template-columns:1fr}
+  .row{grid-template-columns:auto 1fr;row-gap:12px}
+  .row .btn{grid-column:1/-1;justify-content:center}
+  .nav .hide{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top">
+      <img src="{{ url_for('static', filename='img/logo-sm.webp') }}" alt="">
+      <span>INFANTA<br>SPORTS ARENA</span>
+    </a>
+    <a class="lnk hide" href="#schedule">Schedule</a>
+    <a class="lnk hide" href="#formats">Fight Formats</a>
+    <a class="lnk hide" href="#visit">Visit</a>
+    <span class="sp"></span>
+    <a class="btn ghost" href="/login">Members</a>
+  </div>
+</nav>
+
+<!-- ================================================================ hero -->
+<header class="hero" id="top">
+  <div class="hero-img">
+    <picture>
+      <source media="(max-width: 860px)"
+              srcset="{{ url_for('static', filename='img/hero-phone.webp') }}">
+      <img src="{{ url_for('static', filename='img/hero-wide-lit.webp') }}"
+           alt="Infanta Sports Arena">
+    </picture>
+  </div>
+
+  <div class="hero-in">
+    <span class="kicker">Licensed Cockpit &middot; Est. 2026 &middot; {{ site.location }}</span>
+    <h1 class="h-hero" style="margin-top:14px">
+      Derby night<br>in Infanta.
+    </h1>
+    <p class="hero-sub">
+      Traditional sabong and derby competition, under one roof built so the
+      whole gallery can see the pit. Doors open early. Cash only at the gate.
+    </p>
+
+    <div class="hero-cta">
+      <a class="btn" href="#schedule">See the fight schedule &rarr;</a>
+      <a class="btn ghost" href="#visit">How to get here</a>
+    </div>
+
+    <div class="strip">
+      {% if next_event %}
+      <span class="pill"><span class="pip"></span>Next event</span>
+      <strong>{{ next_event.name }}</strong>
+      <span class="sub" style="font-size:14px">{{ next_event.pretty }}</span>
+      {% else %}
+      <span class="pill"><span class="pip"></span>Schedule</span>
+      <span class="sub" style="font-size:14px">Announced weekly. Check back or follow our page.</span>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================ schedule -->
+<section class="sec" id="schedule">
+  <div class="wrap">
+    <div class="up" style="display:flex;flex-wrap:wrap;align-items:end;gap:16px;justify-content:space-between;margin-bottom:clamp(24px,4vh,40px)">
+      <div>
+        <span class="kicker">What's on</span>
+        <h2 class="h-sec" style="margin-top:12px">Fight schedule</h2>
+      </div>
+      <p class="sub" style="max-width:34ch;margin:0">
+        Derby and traditional sabong. Times are start times; the first fight
+        follows shortly after.
+      </p>
+    </div>
+
+    {% if upcoming %}
+    <div class="sched">
+      {% for e in upcoming %}
+      <article class="row up {% if loop.first %}next{% endif %}">
+        <div class="date">
+          <div class="d">{{ e.day }}</div>
+          <div class="m">{{ e.mon }}</div>
+        </div>
+        <div>
+          <h3 class="h-card">{{ e.name }}</h3>
+          <div class="meta">
+            {# e.type is title-cased for display, so comparing it to the
+               lowercase 'derby' was always true and every row got the
+               non-derby styling. Compare like with like. #}
+            <span class="tag {% if e.type|lower != 'derby' %}t{% endif %}">{{ e.type }}</span>
+            <span>{{ e.weekday }}</span>
+            <span>Doors {{ e.doors }}</span>
+            {% if e.fights %}<span>{{ e.fights }} fights carded</span>{% endif %}
+          </div>
+        </div>
+        <a class="btn ghost" href="#visit">Directions</a>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card up">
+      <h3 class="h-card">Schedule announced weekly</h3>
+      <p>
+        Fight days are posted ahead of each week. Derbies and special events
+        are announced further in advance.
+      </p>
+    </div>
+    {% endif %}
+
+    {% if stats %}
+    <div class="stats up" style="margin-top:clamp(24px,4vh,42px)">
+      {% for s in stats %}
+      <div class="stat">
+        <div class="v">{{ s.v }}</div>
+        <div class="k">{{ s.k }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ============================================================= formats -->
+<section class="sec" id="formats" style="background:var(--ink-2)">
+  <div class="wrap">
+    <div class="up">
+      <span class="kicker">Know before you go</span>
+      <h2 class="h-sec" style="margin-top:12px;margin-bottom:clamp(22px,4vh,38px)">
+        How the fighting is run
+      </h2>
+    </div>
+
+    <div class="grid3">
+      <div class="card up">
+        <div class="num">01</div>
+        <h3 class="h-card">Derby</h3>
+        <p>
+          Entries entered as a team, usually three, five or seven cocks. The
+          entry taking the most wins across the card takes the derby. This is
+          where the serious breeders test a whole programme, not one bird.
+        </p>
+      </div>
+      <div class="card up">
+        <div class="num">02</div>
+        <h3 class="h-card">Traditional sabong</h3>
+        <p>
+          Single matched fights, made on the day between two owners once the
+          birds are weighed and paired. The backbone of any regular fight day.
+        </p>
+      </div>
+      <div class="card up">
+        <div class="num">03</div>
+        <h3 class="h-card">On the day</h3>
+        <ul>
+          <li>Arrive early for a seat with a clear line to the pit.</li>
+          <li>Bring cash. Gate and betting are cash.</li>
+          <li>Bets are called and settled through the kristo.</li>
+          <li>Handlers and referee are not to be interfered with.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== house -->
+<section class="sec">
+  <div class="wrap split">
+    <div class="up">
+      <span class="kicker">The house</span>
+      <h2 class="h-sec" style="margin-top:12px">
+        Built so every seat<br>sees the pit.
+      </h2>
+      <p class="sub" style="margin-top:18px">
+        Infanta Sports Arena opened in 2026 on the road into town, red against
+        the rice fields with the range behind it. Clear-span roof, no columns
+        breaking the gallery, and a pit set so the whole room watches the same
+        fight at the same moment.
+      </p>
+      <div class="hero-cta">
+        <a class="btn ghost" href="#visit">Plan your visit</a>
+      </div>
+    </div>
+    <div class="shot up">
+      <img src="{{ url_for('static', filename='img/logo-scene.webp') }}"
+           alt="Two gamefowl meeting in the pit before a full gallery">
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== visit -->
+<section class="sec" id="visit" style="background:var(--ink-2)">
+  <div class="wrap">
+    <div class="up">
+      <span class="kicker">Getting here</span>
+      <h2 class="h-sec" style="margin-top:12px;margin-bottom:clamp(22px,4vh,38px)">Visit the arena</h2>
+    </div>
+
+    <div class="grid3">
+      <div class="card up">
+        <div class="num">WHERE</div>
+        <h3 class="h-card">{{ site.location }}</h3>
+        <p>{{ site.address }}</p>
+      </div>
+      <div class="card up">
+        <div class="num">PARKING</div>
+        <h3 class="h-card">On-site, open ground</h3>
+        <p>
+          Room for motorcycles and tricycles at the front, with vehicle space
+          on the open ground beside the building. Come early on derby days.
+        </p>
+      </div>
+      <div class="card up">
+        <div class="num">CONTACT</div>
+        <h3 class="h-card">Entries &amp; enquiries</h3>
+        <p>
+          For derby entries, event bookings and schedule confirmation.
+        </p>
+        {% if site.phone %}
+        <p style="margin-top:14px"><a class="btn" href="tel:{{ site.phone_raw }}">{{ site.phone }}</a></p>
+        {% elif site.facebook %}
+        <p style="margin-top:14px"><a class="btn" href="{{ site.facebook }}">Message us on Facebook</a></p>
+        {% else %}
+        <p style="margin-top:14px;color:rgba(244,240,234,.42);font-size:13.5px">
+          Contact details to be added.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="band up" style="margin-top:clamp(22px,4vh,40px)">
+      <span class="kicker">For breeders</span>
+      <h2 class="h-sec" style="margin-top:12px;font-size:clamp(24px,3.4vw,42px)">
+        Enter your birds
+      </h2>
+      <p class="sub" style="max-width:52ch;margin-top:14px">
+        Derby entries are taken ahead of each event. Contact the arena for
+        entry fees, weigh-in times and the fight format for the card you want.
+      </p>
+      <div class="hero-cta">
+        <a class="btn" href="#visit">Get in touch</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== footer -->
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <a class="brand" href="#top" style="color:var(--paper)">
+          <img src="{{ url_for('static', filename='img/logo-sm.webp') }}" alt="">
+          <span>INFANTA<br>SPORTS ARENA</span>
+        </a>
+        <p style="margin-top:14px">Est. 2026</p>
+      </div>
+      <div>
+        <strong style="color:var(--paper)">Visit</strong>
+        <p style="margin:8px 0 0">{{ site.location }}<br>{{ site.address }}</p>
+      </div>
+      <div>
+        <strong style="color:var(--paper)">Pages</strong>
+        <p style="margin:8px 0 0">
+          <a href="#schedule">Schedule</a><br>
+          <a href="#formats">Fight formats</a><br>
+          <a href="/login">Members area</a>
+        </p>
+      </div>
+      <div>
+        <strong style="color:var(--paper)">Play responsibly</strong>
+        <p style="margin:8px 0 0">
+          21+ only.<br>
+          NCMH Crisis Hotline<br>1553 &middot; 0917-899-8727
+        </p>
+      </div>
+    </div>
+
+    {# Not boilerplate. E-sabong is genuinely suspended, and a cockpit page
+       that implied online betting would be advertising an illegal service. #}
+    <div class="legal">
+      <strong>Legal notice.</strong>
+      Infanta Sports Arena is a licensed physical cockpit. Traditional
+      cockfighting is regulated in the Philippines under Presidential Decree
+      449 and is permitted on days allowed by law and local ordinance.
+      Online cockfighting (e-sabong) is suspended under Executive Order No. 9
+      (2022); this arena does not operate, offer or accept online betting.
+      All betting takes place in person at the licensed venue.
+      <br><br>
+      <strong>Gamble responsibly.</strong>
+      Betting can be addictive. Wager only what you can afford to lose. Strictly
+      for those aged 21 and over. If gambling is causing harm to you or someone
+      you know, contact the NCMH Crisis Hotline on 1553 or 0917-899-8727.
+      <br><br>
+      &copy; {{ year }} Infanta Sports Arena. All rights reserved.
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var els = document.querySelectorAll('.up');
+  if(!('IntersectionObserver' in window)){
+    els.forEach(function(e){e.classList.add('in')});
+    return;
+  }
+  var io = new IntersectionObserver(function(en){
+    en.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}
+    });
+  },{rootMargin:'0px 0px -10% 0px',threshold:.06});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+</body>
+</html>
+

@@ -89,7 +89,10 @@ con.row_factory = sqlite3.Row
 
 # =========================================================== 1. anonymous ==
 section("1. Anonymous access is refused")
-PUBLIC = {"login", "register", "home", "static", "logout"}
+# Deliberately public. Anything not listed here must send anonymous callers
+# to /login, so adding a public page is an explicit decision recorded here
+# rather than a silent hole.
+PUBLIC = {"login", "register", "home", "home_v2", "static", "logout"}
 SAMPLE = {"event_id": "1", "expense_id": "1", "remittance_id": "1",
           "revenue_id": "1", "fight_id": "1", "roster_id": "1",
           "username": "boss_infanta", "category": "payroll",
