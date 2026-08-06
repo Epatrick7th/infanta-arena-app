@@ -5,13 +5,20 @@ The GitHub Pages showcase for this app: <https://epatrick7th.github.io/infanta-a
 It is a single static page. There is no build step, no framework and no
 external JavaScript; only the Google Fonts stylesheet is remote.
 
-## Enabling it
+## Status
 
-Pages is **not** on yet. Turn it on once:
+Pages is **enabled** and the site is live at the URL above, serving from
+`main` / `/docs` over HTTPS. Every push to `main` republishes it within about
+a minute.
 
-**Settings -> Pages -> Source: Deploy from a branch -> Branch: `main`, folder: `/docs` -> Save**
+To verify the published site rather than the local files:
 
-The site is live a minute later. Every later push to `main` republishes it.
+```bash
+python tools/check-live-site.py
+```
+
+It fetches the real URL, renders it at desktop and phone width, and checks
+every screenshot decodes over HTTPS.
 
 ## Why a static showcase and not a demo
 
