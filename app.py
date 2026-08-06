@@ -423,6 +423,66 @@ def landing2_context():
     })
     return ctx
 
+@app.route('/v3')
+def home_v3():
+    """Third landing page, built around machine-registered betting.
+
+    Public, like the other two, and kept at its own URL so all three can be
+    compared before one is chosen.
+    """
+    return render_template('landing3.html', **landing3_context())
+
+
+def landing3_context():
+    """Real meron/wala history for the arena board.
+
+    The board displays a split, which on a gambling page reads as a factual
+    claim. So it is computed from this arena's recorded fight results rather
+    than invented, and draws are reported separately instead of being
+    quietly folded into one side.
+    """
+    ctx = landing2_context()
+
+    board = {'meron': 0, 'wala': 0, 'draws': 0, 'total': 0,
+             'meron_pct': 50, 'wala_pct': 50}
+    try:
+        conn = db.get_connection()
+        oid = _arena_owner_id(conn)
+        if oid is not None:
+            rows = conn.execute(
+                "SELECT LOWER(TRIM(winner)) w, COUNT(*) c FROM fights "
+                "WHERE boss_id = ? AND deleted_at IS NULL AND winner IS NOT NULL "
+                "GROUP BY LOWER(TRIM(winner))", (oid,)).fetchall()
+            tally = {r['w']: r['c'] for r in rows}
+            meron = tally.get('meron', 0)
+            wala = tally.get('wala', 0)
+            draws = tally.get('draw', 0) + tally.get('draws', 0)
+            decided = meron + wala
+            if decided:
+                board = {
+                    'meron': meron,
+                    'wala': wala,
+                    'draws': draws,
+                    'total': meron + wala + draws,
+                    # percentages are of DECIDED fights, so the two bars sum
+                    # to 100 and the bar is not silently distorted by draws
+                    'meron_pct': round(100 * meron / decided),
+                    'wala_pct': 100 - round(100 * meron / decided),
+                }
+        conn.close()
+    except Exception:
+        pass
+
+    ctx['board'] = board
+
+    # the counters animate from zero, so they need the raw number as well as
+    # the formatted one
+    if ctx.get('stats'):
+        for s in ctx['stats']:
+            s['raw'] = s['v'].replace(',', '')
+
+    return ctx
+
 @app.route('/dashboard')
 @require_login
 def dashboard():
