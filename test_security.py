@@ -413,6 +413,33 @@ with app.test_client() as c:
     html = c.get("/remittances").get_data(as_text=True)
     check("No remittances yet" not in html, "remittances page lists rows")
 
+# The /events bug was a template gated on a variable the route never passed:
+# it rendered blank, silently, with no error. Jinja's default is to treat an
+# undefined name as empty, which is exactly what hid it. Re-render every page
+# with StrictUndefined so that class of bug raises instead of rendering an
+# empty screen.
+from jinja2 import StrictUndefined as _Strict
+
+_prev_undefined = app.jinja_env.undefined
+app.jinja_env.undefined = _Strict
+undef_fails = []
+try:
+    with app.test_client() as c:
+        login(c, BOSS)
+        for r in app.url_map.iter_rules():
+            if "GET" not in r.methods or r.endpoint in ("static", "logout"):
+                continue
+            url = r.build({k: SAMPLE.get(k, "1") for k in r.arguments})[1]
+            try:
+                if c.get(url).status_code >= 500:
+                    undef_fails.append(url)
+            except Exception as e:
+                undef_fails.append(f"{url} ({type(e).__name__})")
+finally:
+    app.jinja_env.undefined = _prev_undefined
+check(not undef_fails, "no page uses a template variable its route never passes",
+      "; ".join(undef_fails[:3]))
+
 
 # ========================================================== 10. no 5xx =====
 section("10. Every page loads without a server error")
