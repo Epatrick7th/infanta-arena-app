@@ -7,6 +7,16 @@ Checks the things that actually break a static showcase:
   - internal anchors resolve
   - external links point where they claim
 """
+import os as _os
+import sys as _sys
+
+# Runnable from anywhere: anchor to the repository root so `import db` and the
+# relative data/ and docs/ paths resolve the same way they do from the root.
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+_os.chdir(_ROOT)
+
 import pathlib
 import re
 import subprocess

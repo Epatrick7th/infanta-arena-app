@@ -37,18 +37,34 @@ never mocked up, so the page cannot show something the code does not do.
 python tools/capture-screenshots.py     # capture from the running app
 python tools/capture-live-arena.py      # live fight with bets on both sides
 python tools/optimise-screenshots.py    # 2x PNG -> half-size WebP (~98% smaller)
+python tools/sync-figures.py            # update figures to match the repo
 python tools/check-site.py              # verify before pushing
+python tools/check-live-site.py         # verify the published URL after
 ```
+
+`capture-screenshots.py` **refuses to save a screenshot of an empty screen**.
+That happened once: live-arena was captured showing "No Fights Scheduled"
+under a caption describing a fight in progress, and it was caught only by eye.
+Seed the data (for live-arena, use `capture-live-arena.py`) and re-run.
 
 `check-site.py` is the one that matters. It asserts:
 
 - every screenshot the page references exists and actually decodes
+- no unreferenced screenshots are shipped as dead weight
 - no horizontal overflow at 390, 768 and 1440 px
 - no JavaScript errors, and every local asset loads
 - internal anchors resolve
 - **the numbers on the page match the repository** — the route count is read
   from `app.py` and the check count from `test_security.py`, so the page
   cannot quietly drift out of date after a change
+
+`check-site-regressions.py` proves those checks actually fire: it reconstructs
+each flaw this site has had (an unreferenced screenshot, stale figures, a
+missing image, a broken anchor) and confirms the checker reports it.
+
+**Not covered:** purely visual problems such as mismatched card heights. A
+machine cannot judge those, and they do not mislead anyone, so they are left
+to review.
 
 ## Notes
 

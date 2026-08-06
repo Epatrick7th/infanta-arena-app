@@ -12,6 +12,16 @@ the docs give, then check for every single account that
   - the user id is unchanged, so nothing detaches
   - the records they owned before are still theirs afterwards
 """
+import os as _os
+import sys as _sys
+
+# Runnable from anywhere: anchor to the repository root so `import db` and the
+# relative data/ and docs/ paths resolve the same way they do from the root.
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+_os.chdir(_ROOT)
+
 import os
 import re
 import shutil

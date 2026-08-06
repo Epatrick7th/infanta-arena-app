@@ -4,6 +4,16 @@ Runs the Flask app against a COPY of the database, logs in as a boss, and
 screenshots the pages worth showing. Using the real app rather than mockups
 means the showcase cannot drift from what the software actually does.
 """
+import os as _os
+import sys as _sys
+
+# Runnable from anywhere: anchor to the repository root so `import db` and the
+# relative data/ and docs/ paths resolve the same way they do from the root.
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+_os.chdir(_ROOT)
+
 import os
 import shutil
 import sys
@@ -70,10 +80,26 @@ with sync_playwright() as p:
     pg.click("button[type=submit], input[type=submit]")
     pg.wait_for_timeout(1200)
 
+    # A screenshot of an empty screen under a caption promising content is the
+    # page asserting something the picture disproves. That happened once with
+    # live-arena ("No Fights Scheduled" beneath a caption describing a fight in
+    # progress) and was caught only by eye. Refuse to save one.
+    EMPTY_STATES = [
+        "No Fights Scheduled", "No events yet", "No expenses recorded yet",
+        "No remittances yet", "No personnel", "sales recorded today",
+    ]
+    empty = []
+
     for path, name, full in PAGES[1:]:
         try:
             pg.goto(f"{BASE}{path}", wait_until="networkidle")
             pg.wait_for_timeout(1500)  # let counters/animations settle
+            text = pg.evaluate("() => document.body.innerText")
+            hit = [e for e in EMPTY_STATES if e.lower() in text.lower()]
+            if hit:
+                empty.append((name, hit))
+                print(f"  !! {name}: shows an empty state {hit} - NOT SAVED")
+                continue
             pg.screenshot(path=str(OUT / f"{name}.png"), full_page=full)
             print(f"  ok  {name}.png")
         except Exception as e:
@@ -103,3 +129,12 @@ except PermissionError:
 shots = sorted(OUT.glob("*.png"))
 total = sum(f.stat().st_size for f in shots)
 print(f"\n{len(shots)} screenshots, {total/1e6:.1f} MB -> {OUT}")
+
+if empty:
+    print("\nREFUSED to capture these because they showed an empty state:")
+    for name, hit in empty:
+        print(f"  {name}: {hit}")
+    print("\nSeed the relevant data and re-run, or the site would show a blank")
+    print("screen under a caption promising content. live-arena in particular")
+    print("has its own tool: python tools/capture-live-arena.py")
+    sys.exit(1)

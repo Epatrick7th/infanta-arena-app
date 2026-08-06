@@ -4,6 +4,16 @@ HTTP 200 on every file does not mean the page is correct: fonts come from a
 CDN here, HTTPS is enforced, and paths behave differently under a subpath
 (/infanta-arena-app/) than they did on localhost.
 """
+import os as _os
+import sys as _sys
+
+# Runnable from anywhere: anchor to the repository root so `import db` and the
+# relative data/ and docs/ paths resolve the same way they do from the root.
+_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _ROOT not in _sys.path:
+    _sys.path.insert(0, _ROOT)
+_os.chdir(_ROOT)
+
 import sys
 
 URL = "https://epatrick7th.github.io/infanta-arena-app/"
