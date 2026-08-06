@@ -10,3 +10,8 @@ data/_*.db
 _commitmsg.txt 
 _*.png 
 arena-server.log 
+
+# scratch commit messages and notes; _*.py was ignored but _*.txt was not,
+# which is how one got committed
+_*.txt
+_*.html
