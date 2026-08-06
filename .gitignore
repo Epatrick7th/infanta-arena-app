@@ -9,3 +9,4 @@ data/*.db.bak-*
 data/_*.db
 _commitmsg.txt 
 _*.png 
+arena-server.log 
