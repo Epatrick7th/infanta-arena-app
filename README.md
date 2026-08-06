@@ -36,10 +36,19 @@ python rotate_password.py boss_infanta     # one account
 python rotate_password.py --all            # everyone
 ```
 
+The rotation is verified end to end against a scratch copy of the real
+database, so the instructions above are known to work rather than merely
+written down:
+
+```bash
+python tools/check-rotation.py         # --all: every account, logins and data
+python tools/check-rotation-paths.py   # the single-account and legacy paths
+```
+
 ## Tests
 
 ```bash
-python test_security.py     # 40 checks, runs against a throwaway DB copy
+python test_security.py     # 42 checks, runs against a throwaway DB copy
 python sanity_check.py      # imports and routes
 python tools/check-site.py  # the project site in docs/
 ```
