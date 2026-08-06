@@ -316,8 +316,9 @@ def landing_context():
         'site': {
             # kept as data because the exact address is Patrick's to confirm;
             # better an honest placeholder than an invented province
-            'location': os.environ.get('ARENA_LOCATION', 'Infanta, Philippines'),
-            'address': os.environ.get('ARENA_ADDRESS', 'On the main road into town.'),
+            'location': os.environ.get('ARENA_LOCATION', 'Infanta, Quezon'),
+            'address': os.environ.get('ARENA_ADDRESS',
+                                      'On the road into town, off Marilaque Highway.'),
         },
         'year': date.today().year,
     }
@@ -481,6 +482,51 @@ def landing3_context():
         for s in ctx['stats']:
             s['raw'] = s['v'].replace(',', '')
 
+    return ctx
+
+# Six teller slots by default: enough to look like a working floor without
+# padding it out. Names and photos are supplied by the arena; until then the
+# slots render as captioned placeholders rather than invented people.
+TELLER_SLOTS = 6
+
+
+@app.route('/v4')
+def home_v4():
+    """Fourth landing page: v3 plus the place itself.
+
+    Adds the drive over the Sierra Madre, the Pacific coast at Dinahican,
+    and a showcase for the arena's tellers.
+    """
+    return render_template('landing4.html', **landing4_context())
+
+
+def landing4_context():
+    """Context for v4.
+
+    Teller entries come from ARENA_TELLERS if set, as
+    "Name|Role|photo.webp" separated by semicolons, so the arena can fill
+    them in without a code change. Anything not supplied renders as a
+    deliberate empty slot, never as a made-up member of staff.
+    """
+    ctx = landing3_context()
+
+    tellers = []
+    raw = os.environ.get('ARENA_TELLERS', '').strip()
+    if raw:
+        for part in raw.split(';'):
+            bits = [b.strip() for b in part.split('|')]
+            if not bits or not bits[0]:
+                continue
+            tellers.append({
+                'name': bits[0],
+                'role': bits[1] if len(bits) > 1 else 'Teller',
+                'photo': bits[2] if len(bits) > 2 else None,
+            })
+
+    while len(tellers) < TELLER_SLOTS:
+        tellers.append({'name': 'Photo to follow', 'role': None, 'photo': None})
+
+    ctx['tellers'] = tellers[:max(TELLER_SLOTS, len(tellers))]
     return ctx
 
 @app.route('/dashboard')
