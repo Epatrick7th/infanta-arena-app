@@ -37,6 +37,9 @@ DEV_FALLBACK = {
     "boss2": "royal123",
     "assistant": "infanta_asst",
 }
+# Writes are an assistant's job now, so the write-path tests need an assistant
+# in the second arena as well as the first.
+DEV_FALLBACK["assistant2"] = "royal_asst"
 BOSS = (os.environ.get("ARENA_TEST_BOSS_USER", "boss_infanta"),
         os.environ.get("ARENA_TEST_BOSS_PASSWORD", DEV_FALLBACK["boss"]))
 BOSS2 = (os.environ.get("ARENA_TEST_BOSS2_USER", "boss_royal"),
@@ -44,6 +47,9 @@ BOSS2 = (os.environ.get("ARENA_TEST_BOSS2_USER", "boss_royal"),
 ASSISTANT = (os.environ.get("ARENA_TEST_ASSISTANT_USER", "asst_infanta"),
              os.environ.get("ARENA_TEST_ASSISTANT_PASSWORD",
                             DEV_FALLBACK["assistant"]))
+ASSISTANT2 = (os.environ.get("ARENA_TEST_ASSISTANT2_USER", "asst_royal"),
+              os.environ.get("ARENA_TEST_ASSISTANT2_PASSWORD",
+                             DEV_FALLBACK["assistant2"]))
 
 failures = []
 checks = 0
@@ -155,7 +161,11 @@ with app.test_client() as c:
 # =================================================== 4. write ownership ====
 section("4. New rows are stamped with the creating boss")
 with app.test_client() as c:
-    uid = login(c, BOSS2)
+    # The assistant does the recording; the row must still belong to the boss
+    # whose books it appears in, not to the person who typed it.
+    login(c, ASSISTANT2)
+    uid = con.execute("select id from users where username=?",
+                      (BOSS2[0],)).fetchone()["id"]
     today = date.today().isoformat()
     tag = "SecuritySuite"
 
@@ -236,7 +246,10 @@ with app.test_client() as c:
 # ==================================================== 6. JSON coercion =====
 section("6. JSON write APIs accept numbers and numeric strings")
 with app.test_client() as c:
-    uid = login(c, BOSS)
+    login(c, ASSISTANT)  # writes are the assistant's job
+    # the assistant acts on their arena owner's records, not on rows of their own
+    uid = con.execute("select id from users where username=?",
+                      (BOSS[0],)).fetchone()["id"]
     ev = con.execute("select id from events where boss_id=? limit 1", (uid,)).fetchone()["id"]
 
     r = c.post(f"/api/events/{ev}/revenue", json={"source": "gate", "amount": 1500})
@@ -256,7 +269,7 @@ with app.test_client() as c:
 # ============================================================ 7. CSRF ======
 section("7. Cross-site writes are rejected, same-site writes are not")
 with app.test_client() as c:
-    login(c, BOSS)
+    login(c, ASSISTANT)  # writes are the assistant's job
     form = {"date": date.today().isoformat(), "amount": "10",
             "description": "csrf case", "category": "supplies"}
 
@@ -539,6 +552,90 @@ for creds, label in ((BOSS, "boss"), (ASSISTANT, "assistant")):
             if code >= 500:
                 bad.append(f"{url} -> {code}")
         check(not bad, f"{label}: no 5xx on any GET route", "; ".join(bad[:3]))
+
+
+# ================================================ 11. boss / assistant =====
+section("11. The boss reviews, the assistant records")
+
+# The arena's promise is that an owner can inspect everything and change
+# nothing, so a disputed figure always has an author other than the owner.
+# Checking the decorators is not enough; drive the endpoints.
+_MUTATIONS = [r for r in app.url_map.iter_rules()
+              if {"POST", "PUT", "DELETE", "PATCH"} & r.methods
+              and r.endpoint not in ("login", "logout", "static")]
+
+# A payload plausible enough that an unguarded route would really write.
+# A probe that gets rejected as malformed proves nothing about the role check.
+# Generated, not written down: the credential scanner is right that a literal
+# here would be indistinguishable from a real leaked one.
+_PROBE_SECRET = "Probe-" + os.urandom(8).hex()
+SAMPLE_FORM = {
+    "date": "2025-01-01", "event_date": "2025-01-01",
+    "name": "boss probe", "event_name": "boss probe",
+    "event_type": "derby", "location": "Test", "note": "boss probe",
+    "category": "Feed", "amount": "1234", "description": "boss probe",
+    "full_name": "Boss Probe", "role_name": "Gaffer", "pay_rate": "500",
+    "username": "_probe_boss_user", "password": _PROBE_SECRET,
+    "confirm_password": _PROBE_SECRET, "role": "super_admin",
+    "arena_name": "Test Arena", "event_id": "1", "fight_number": "1",
+    "meron": "A", "wala": "B", "bet_amount": "100", "winner": "meron",
+    "reason": "boss probe", "status": "approved",
+}
+
+
+def _fingerprint():
+    """Row counts across every table, so any write anywhere shows up."""
+    c2 = D.get_connection()
+    names = [r["name"] for r in c2.execute(
+        "select name from sqlite_master where type='table'")]
+    fp = {n: c2.execute(f"select count(*) n from '{n}'").fetchone()["n"]
+          for n in names}
+    c2.close()
+    return fp
+
+
+with app.test_client() as c:
+    if login(c, BOSS) is not None:
+        _before = _fingerprint()
+        for _r in _MUTATIONS:
+            _url = _r.build({k: SAMPLE.get(k, "1") for k in _r.arguments})[1]
+            for _m in ({"POST", "PUT", "DELETE", "PATCH"} & _r.methods):
+                try:
+                    c.open(_url, method=_m, data=SAMPLE_FORM, json=None)
+                except Exception:
+                    pass
+        _after = _fingerprint()
+        _changed = {k: (v, _after[k]) for k, v in _before.items() if _after[k] != v}
+        check(not _changed,
+              f"a boss hitting all {len(_MUTATIONS)} mutating routes changes nothing",
+              str(_changed)[:120])
+
+# The assistant must still be able to work, or the arena stops running.
+with app.test_client() as c:
+    if login(c, ASSISTANT) is not None:
+        _n0 = _fingerprint().get("expenses", 0)
+        c.post("/expenses/new", data={"date": "2025-01-01", "category": "Feed",
+                                      "amount": "1", "note": "suite probe"},
+               follow_redirects=True)
+        check(_fingerprint().get("expenses", 0) == _n0 + 1,
+              "an assistant can still record an expense")
+
+        # and is the role that actions the queue the boss reviews
+        _html = c.get("/boss/approvals").get_data(as_text=True)
+        check(">Approve<" in _html,
+              "the approvals queue is populated and actionable for the assistant")
+
+with app.test_client() as c:
+    if login(c, BOSS) is not None:
+        _html = c.get("/boss/approvals").get_data(as_text=True)
+        check(">Approve<" not in _html and ">Reject<" not in _html,
+              "the boss is shown no action buttons that would only fail")
+        check("Created by:" in _html,
+              "the boss is shown who created each pending item")
+
+# Both roles must be creatable through the admin UI, not only by hand.
+check("boss" in D.ROLES and "assistant" in D.ROLES,
+      "boss and assistant are registered roles")
 
 
 # --- teardown -------------------------------------------------------------

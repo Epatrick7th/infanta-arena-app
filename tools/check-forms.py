@@ -43,8 +43,10 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     pg = b.new_page(viewport={"width": 1440, "height": 900})
     pg.goto(f"{BASE}/login", wait_until="networkidle")
-    pg.fill("input[name=username]", "boss_infanta")
-    pg.fill("input[name=password]", "infanta123")
+    # Data entry is the assistant's job; the boss is deliberately read-only,
+    # so driving these forms as the boss would test the wrong thing.
+    pg.fill("input[name=username]", "asst_infanta")
+    pg.fill("input[name=password]", "infanta_asst")
     pg.click("button[type=submit], input[type=submit]")
     pg.wait_for_load_state("networkidle")
 

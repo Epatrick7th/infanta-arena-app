@@ -45,10 +45,32 @@ python tools/check-rotation.py         # --all: every account, logins and data
 python tools/check-rotation-paths.py   # the single-account and legacy paths
 ```
 
+## Who can change what
+
+Each arena has two logins, and they are deliberately not equivalent.
+
+| Role | Can see | Can change |
+| --- | --- | --- |
+| **Boss** (the partner) | their whole arena: events, expenses, remittances, personnel, analytics | nothing |
+| **Assistant** | the same arena | records data and approves or rejects pending items |
+
+The boss is strictly read-only. This is enforced in one place, a
+`before_request` hook that refuses every mutating request from a boss, rather
+than route by route where one missed decorator would reopen the hole. The
+action buttons are also hidden from the boss, so nobody is offered a control
+that would only fail.
+
+The point is that a figure a partner disputes always has an author who is not
+that partner. Every record stores who created it and when, and the same for
+who approved it, and the boss can see both.
+
+A boss cannot see any other partner's books, whatever their own role.
+
 ## Tests
 
+
 ```bash
-python test_security.py     # 43 checks, runs against a throwaway DB copy
+python test_security.py     # 49 checks, runs against a throwaway DB copy
 python sanity_check.py      # imports and routes
 python tools/check-site.py  # the project site in docs/
 ```

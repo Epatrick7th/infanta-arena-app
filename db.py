@@ -14,9 +14,20 @@ def _today() -> str:
     return date.today().isoformat()
 
 NOT_DELETED = "deleted_at IS NULL"
-ROLES = ["viewer", "staff", "admin", "super_admin"]
+# "boss" and "assistant" existed in the database and in the route decorators
+# but were missing here, so the user-admin page could not create either one:
+# the two roles the arena actually runs on had to be inserted by hand.
+# Order is display order only; ROLE_RANK is not used for privilege checks.
+ROLES = ["viewer", "boss", "staff", "assistant", "admin", "super_admin"]
 ROLE_RANK = {r: i for i, r in enumerate(ROLES)}
-ROLE_LABELS = {"super_admin": "Super Admin", "admin": "Admin", "staff": "Staff", "viewer": "Viewer"}
+ROLE_LABELS = {
+    "super_admin": "Super Admin",
+    "admin": "Admin",
+    "assistant": "Assistant (records and actions data)",
+    "staff": "Staff",
+    "boss": "Boss (read-only owner)",
+    "viewer": "Viewer (read-only)",
+}
 DEFAULT_ROLE = "staff"
 
 class _SafeConnection(sqlite3.Connection):

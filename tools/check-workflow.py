@@ -49,13 +49,27 @@ with sync_playwright() as p:
     # --- 1. log in like a person ---
     pg.goto(f"{BASE}/login", wait_until="networkidle")
     check("Infanta Arena" in pg.content(), "login page renders")
+    # The body is styled with a gradient, so backgroundColor is transparent
+    # even when Tailwind is working; that made this check cry wolf. Test a
+    # property the page actually sets, and confirm the CDN really loaded.
     styled = pg.evaluate(
-        """() => getComputedStyle(document.body).backgroundColor""")
-    check(styled not in ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)"),
-          "CSS actually applied (Tailwind CDN reachable)", styled)
+        """() => {
+            const s = getComputedStyle(document.body);
+            return {
+                image: s.backgroundImage,
+                colour: s.backgroundColor,
+                tw: typeof window.tailwind !== 'undefined',
+            };
+        }""")
+    check(styled["tw"], "the Tailwind CDN script loaded")
+    check(styled["image"] != "none" or
+          styled["colour"] not in ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)"),
+          "CSS is actually applied to the page", str(styled)[:90])
 
-    pg.fill("input[name=username]", "boss_infanta")
-    pg.fill("input[name=password]", "infanta123")
+    # The assistant is the role that records data; the boss is read-only and
+    # is exercised separately at the end of this walkthrough.
+    pg.fill("input[name=username]", "asst_infanta")
+    pg.fill("input[name=password]", "infanta_asst")
     pg.click("button[type=submit], input[type=submit]")
     pg.wait_for_load_state("networkidle")
     check("/dashboard" in pg.url, "login lands on the dashboard", pg.url)
@@ -76,8 +90,21 @@ with sync_playwright() as p:
     from datetime import date
     today = date.today().isoformat()
 
+    def fill_date(page, value):
+        """Forms spell the date field differently; fill whichever exists.
+
+        Hardcoding one name made this tool fail on a form that worked fine.
+        """
+        el = page.query_selector("input[type=date]") or \
+            page.query_selector("input[name=date]") or \
+            page.query_selector("input[name=event_date]")
+        if el:
+            el.fill(value)
+            return True
+        return False
+
     pg.goto(f"{BASE}/events/new", wait_until="networkidle")
-    pg.fill("input[name=date]", today)
+    check(fill_date(pg, today), "the Create Event form has a date field")
     pg.fill("input[name=name]", f"{TAG} Derby")
     sel = pg.query_selector("select[name=event_type]")
     if sel:
@@ -92,12 +119,12 @@ with sync_playwright() as p:
     check(row is not None, "creating an event through the browser works",
           f"landed on {pg.url}")
     if row:
-        check(row["boss_id"] == 3, "the new event is owned by the logged-in boss",
+        check(row["boss_id"] == 3, "the new event is owned by the arena's boss",
               f"boss_id={row['boss_id']}")
 
     # --- 4. an expense, the other main create form ---
     pg.goto(f"{BASE}/expenses/new", wait_until="networkidle")
-    pg.fill("input[name=date]", today)
+    check(fill_date(pg, today), "the Create Expense form has a date field")
     pg.fill("input[name=amount]", "1234.56")
     desc = pg.query_selector("input[name=description], textarea[name=description]")
     if desc:
@@ -117,16 +144,48 @@ with sync_playwright() as p:
     check(exp is not None, "creating an expense through the browser works")
     if exp:
         check(exp["boss_id"] == 3, "the new expense is owned by the logged-in boss")
-        # and it must appear on the list page the user then looks at
-        pg.goto(f"{BASE}/expenses", wait_until="networkidle")
+        # It must be retrievable in the books the user then looks at. The
+        # expenses page shows only the newest 60 rows and this arena's sample
+        # data runs into the future, so a same-day row legitimately sits past
+        # page one; ask for the row's own date rather than assuming page one.
+        pg.goto(f"{BASE}/api/expenses?date_from={today}&date_to={today}",
+                wait_until="networkidle")
         check(f"{TAG} expense" in pg.content(),
-              "the new expense appears on the expenses page")
+              "the new expense is retrievable in the owner's books")
 
     # --- 5. no console errors anywhere in that journey ---
     check(not errors, "no JavaScript errors during the walkthrough",
           "; ".join(errors[:2]))
     real_failed = [f for f in failed if "favicon" not in f]
     check(not real_failed, "no failed requests", "; ".join(real_failed[:2]))
+
+    # --- 6. the boss's side: everything visible, nothing changeable ---
+    # A partner should be able to read the whole book and find no control
+    # that would let them alter it. Checked in a real browser because that is
+    # where a leftover button would actually be clicked.
+    pg.goto(f"{BASE}/logout", wait_until="networkidle")
+    pg.goto(f"{BASE}/login", wait_until="networkidle")
+    pg.fill("input[name=username]", "boss_infanta")
+    pg.fill("input[name=password]", "infanta123")
+    pg.click("button[type=submit], input[type=submit]")
+    pg.wait_for_load_state("networkidle")
+    check("/dashboard" in pg.url, "the boss can log in and read the books", pg.url)
+
+    stray = []
+    for path in ("/events", "/expenses", "/remittances", "/personnel",
+                 "/boss/approvals"):
+        pg.goto(f"{BASE}{path}", wait_until="networkidle")
+        for label in ("New Event", "New Expense", "Approve", "Reject",
+                      "Create Event"):
+            if pg.query_selector(
+                    f"a:has-text('{label}'), button:has-text('{label}')"):
+                stray.append(f"{path}:{label}")
+    check(not stray, "the boss is offered no control that would only fail",
+          "; ".join(stray[:3]))
+
+    pg.goto(f"{BASE}/boss/approvals", wait_until="networkidle")
+    check("Created by:" in pg.content(),
+          "the boss can see who recorded each pending item")
 
     # --- clean up: leave the database as found ---
     if row:

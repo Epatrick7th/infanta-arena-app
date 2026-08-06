@@ -24,9 +24,12 @@
                 <label class="block text-slate-300 text-sm font-medium mb-2">Role</label>
                 <select name="role" required class="w-full px-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white focus:outline-none focus:border-arena-500 focus:ring-2 focus:ring-arena-500/20 transition">
                     <option value="">-- Select Role --</option>
-                    <option value="super_admin">Super Admin</option>
-                    <option value="admin">Admin</option>
-                    <option value="staff">Staff</option>
+                    {# Driven by db.ROLES. The list used to be hardcoded here and
+                       had drifted: boss, assistant and viewer could not be
+                       created at all, despite the app being built around them. #}
+                    {% for r in roles|reverse %}
+                    <option value="{{ r }}">{{ role_labels.get(r, r) }}</option>
+                    {% endfor %}
                 </select>
             </div>
 

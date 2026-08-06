@@ -41,12 +41,12 @@ def approve_event(event_id: int, boss_id: int, approved_by: str):
     """Boss approves an event."""
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "UPDATE events SET approval_status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ? AND boss_id = ?",
             (approved_by, event_id, boss_id)
         )
         conn.commit()
-        return True
+        return cur.rowcount > 0
     finally:
         conn.close()
 
@@ -54,12 +54,12 @@ def approve_revenue(revenue_id: int, boss_id: int, approved_by: str):
     """Boss approves revenue entry."""
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "UPDATE event_revenue SET approval_status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ? AND boss_id = ?",
             (approved_by, revenue_id, boss_id)
         )
         conn.commit()
-        return True
+        return cur.rowcount > 0
     finally:
         conn.close()
 
@@ -67,12 +67,12 @@ def approve_expense(expense_id: int, boss_id: int, approved_by: str):
     """Boss approves expense."""
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "UPDATE expenses SET approval_status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ? AND boss_id = ?",
             (approved_by, expense_id, boss_id)
         )
         conn.commit()
-        return True
+        return cur.rowcount > 0
     finally:
         conn.close()
 
@@ -80,12 +80,12 @@ def approve_remittance(remittance_id: int, boss_id: int, approved_by: str):
     """Boss approves remittance."""
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "UPDATE cash_remittances SET approval_status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ? AND boss_id = ?",
             (approved_by, remittance_id, boss_id)
         )
         conn.commit()
-        return True
+        return cur.rowcount > 0
     finally:
         conn.close()
 
@@ -93,11 +93,11 @@ def reject_event(event_id: int, boss_id: int, approved_by: str):
     """Boss rejects an event."""
     conn = get_connection()
     try:
-        conn.execute(
+        cur = conn.execute(
             "UPDATE events SET approval_status = 'rejected', approved_by = ?, approved_at = datetime('now') WHERE id = ? AND boss_id = ?",
             (approved_by, event_id, boss_id)
         )
         conn.commit()
-        return True
+        return cur.rowcount > 0
     finally:
         conn.close()

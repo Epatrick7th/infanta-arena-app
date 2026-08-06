@@ -24,6 +24,46 @@ app.config.update(
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 
+# --- Role model -----------------------------------------------------------
+# boss      oversight only. Sees every figure, changes nothing.
+# assistant does the operational work, including processing approvals.
+# admin     account management.
+#
+# The boss restriction is enforced by denying every state-changing request
+# from a boss session, rather than by guarding routes one at a time. A route
+# added tomorrow is therefore closed to the boss by default, which is the
+# only way this stays true as the app grows.
+READ_ONLY_ROLES = {"boss", "viewer"}
+
+# the only state-changing endpoints a read-only user may reach
+READ_ONLY_POST_ALLOWED = {"login", "logout"}
+
+
+@app.before_request
+def enforce_read_only_roles():
+    """Refuse any mutation attempted by a read-only role.
+
+    Covers direct URL and API calls, not just hidden buttons: a boss session
+    cannot change data even with a crafted request.
+    """
+    if request.method in SAFE_METHODS:
+        return None
+    if request.endpoint in READ_ONLY_POST_ALLOWED:
+        return None
+
+    role = session.get("user_role")
+    if role in READ_ONLY_ROLES:
+        message = ("Your account has view-only access. "
+                   "Ask an assistant to make this change.")
+        if request.path.startswith("/api/"):
+            return jsonify({"error": message, "role": role}), 403
+        flash(message, "error")
+        # send them back where they came from rather than a dead end
+        return redirect(request.referrer or url_for("dashboard"))
+    return None
+
+
+
 
 @app.before_request
 def block_cross_site_writes():
@@ -1166,7 +1206,7 @@ def api_delete_user(username):
 # ===== BOSS APPROVAL ROUTES =====
 
 @app.route('/boss/approvals')
-@require_role('boss')
+@require_role('boss', 'assistant', 'admin', 'super_admin')
 def boss_approvals():
     """Boss views pending approvals."""
     user_id = session.get('user_id')
@@ -1178,9 +1218,13 @@ def boss_approvals():
         flash("User not found.", "error")
         return redirect(url_for('login'))
     
-    boss_id = user['id']
     arena_name = user['arena_name'] or 'My Arena'
-    
+
+    # Pending records belong to the arena's boss. An assistant's own user id
+    # matches nothing, which left the approvals queue permanently empty for
+    # the very role that is supposed to action it.
+    boss_id = current_boss_id()
+
     pending = boss_approval.get_pending_approvals(boss_id)
     
     return render_template('boss_approvals.html',
@@ -1188,82 +1232,82 @@ def boss_approvals():
         **pending)
 
 @app.route('/approve/event/<int:event_id>', methods=['POST'])
-@require_role('boss')
+@require_role('assistant', 'admin', 'super_admin')
 def approve_event(event_id):
     """Boss approves an event."""
-    user_id = session.get('user_id')
     username = session.get('username')
-    conn = db.get_connection()
-    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    
-    if user:
-        boss_approval.approve_event(event_id, user['id'], username)
-        flash("Event approved!", "success")
+    # Records belong to the arena's boss, not to the assistant acting on them,
+    # so scope by the arena. Using the actor's own id silently matched no rows.
+    owner_id = current_boss_id()
+
+    if boss_approval.approve_event(event_id, owner_id, username):
+        flash("Event approved by {}.".format(username), "success")
+    else:
+        flash("Nothing was changed. It may already have been actioned.", "error")
     
     return redirect(url_for('boss_approvals'))
 
 @app.route('/approve/revenue/<int:revenue_id>', methods=['POST'])
-@require_role('boss')
+@require_role('assistant', 'admin', 'super_admin')
 def approve_revenue(revenue_id):
     """Boss approves revenue."""
-    user_id = session.get('user_id')
     username = session.get('username')
-    conn = db.get_connection()
-    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    
-    if user:
-        boss_approval.approve_revenue(revenue_id, user['id'], username)
-        flash("Revenue approved!", "success")
+    # Records belong to the arena's boss, not to the assistant acting on them,
+    # so scope by the arena. Using the actor's own id silently matched no rows.
+    owner_id = current_boss_id()
+
+    if boss_approval.approve_revenue(revenue_id, owner_id, username):
+        flash("Revenue approved by {}.".format(username), "success")
+    else:
+        flash("Nothing was changed. It may already have been actioned.", "error")
     
     return redirect(url_for('boss_approvals'))
 
 @app.route('/approve/expense/<int:expense_id>', methods=['POST'])
-@require_role('boss')
+@require_role('assistant', 'admin', 'super_admin')
 def approve_expense(expense_id):
     """Boss approves expense."""
-    user_id = session.get('user_id')
     username = session.get('username')
-    conn = db.get_connection()
-    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    
-    if user:
-        boss_approval.approve_expense(expense_id, user['id'], username)
-        flash("Expense approved!", "success")
+    # Records belong to the arena's boss, not to the assistant acting on them,
+    # so scope by the arena. Using the actor's own id silently matched no rows.
+    owner_id = current_boss_id()
+
+    if boss_approval.approve_expense(expense_id, owner_id, username):
+        flash("Expense approved by {}.".format(username), "success")
+    else:
+        flash("Nothing was changed. It may already have been actioned.", "error")
     
     return redirect(url_for('boss_approvals'))
 
 @app.route('/approve/remittance/<int:remittance_id>', methods=['POST'])
-@require_role('boss')
+@require_role('assistant', 'admin', 'super_admin')
 def approve_remittance(remittance_id):
     """Boss approves remittance."""
-    user_id = session.get('user_id')
     username = session.get('username')
-    conn = db.get_connection()
-    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    
-    if user:
-        boss_approval.approve_remittance(remittance_id, user['id'], username)
-        flash("Remittance approved!", "success")
+    # Records belong to the arena's boss, not to the assistant acting on them,
+    # so scope by the arena. Using the actor's own id silently matched no rows.
+    owner_id = current_boss_id()
+
+    if boss_approval.approve_remittance(remittance_id, owner_id, username):
+        flash("Remittance approved by {}.".format(username), "success")
+    else:
+        flash("Nothing was changed. It may already have been actioned.", "error")
     
     return redirect(url_for('boss_approvals'))
 
 @app.route('/reject/event/<int:event_id>', methods=['POST'])
-@require_role('boss')
+@require_role('assistant', 'admin', 'super_admin')
 def reject_event(event_id):
     """Boss rejects an event."""
-    user_id = session.get('user_id')
     username = session.get('username')
-    conn = db.get_connection()
-    user = conn.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    
-    if user:
-        boss_approval.reject_event(event_id, user['id'], username)
-        flash("Event rejected!", "info")
+    # Records belong to the arena's boss, not to the assistant acting on them,
+    # so scope by the arena. Using the actor's own id silently matched no rows.
+    owner_id = current_boss_id()
+
+    if boss_approval.reject_event(event_id, owner_id, username):
+        flash("Event rejected by {}.".format(username), "info")
+    else:
+        flash("Nothing was changed. It may already have been actioned.", "error")
     
     return redirect(url_for('boss_approvals'))
 
